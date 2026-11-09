@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CA Final SPOM · Testing & Revision Portal</title>
+  <meta name="description" content="Minimalist, intelligence-driven preparation portal for CA Final SPOM Set A (Corporate & Economic Laws) and Set B (SCPM). 100 Marks CBT Simulator, Quick Revision Handbook, and Mistakes Book.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2.3">
+</head>
+<body>
+
+  <!-- Minimalist Top Navigation -->
+  <nav class="navbar">
+    <div class="nav-wrapper">
+      <div class="brand" onclick="app.showTab('home')">
+        <span class="brand-badge">ICAI CBT</span>
+        <span class="brand-title">CA Final · SPOM</span>
+      </div>
+
+      <!-- Set Switcher -->
+      <div class="set-switcher">
+        <button id="set-a-btn" class="set-pill active" onclick="app.switchSet('A')">
+          Set A · Law (70/30M)
+        </button>
+        <button id="set-b-btn" class="set-pill" onclick="app.switchSet('B')">
+          Set B · SCPM (50/50M)
+        </button>
+      </div>
+
+      <!-- Concise Nav Links (Only 5 essential items) -->
+      <ul class="nav-links">
+        <li><button class="nav-item-btn active" id="nav-home" onclick="app.showTab('home')">Dashboard</button></li>
+        <li><button class="nav-item-btn" id="nav-handbook" onclick="app.showTab('handbook')">Handbook</button></li>
+        <li><button class="nav-item-btn" id="nav-practice" onclick="app.showTab('practice')">Testing Centre</button></li>
+        <li><button class="nav-item-btn" id="nav-mistakes" onclick="app.showTab('mistakes')">Mistakes <span class="nav-count-badge" id="nav-mistakes-count">0</span></button></li>
+        <li><button class="nav-item-btn" id="nav-studio" onclick="app.showTab('studio')">Studio</button></li>
+      </ul>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+        <button class="btn-icon" id="theme-toggle" title="Toggle Theme" onclick="app.toggleTheme()">
+          <span id="theme-icon">☀️</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="container">
+
+    <!-- =========================================================================
+         TAB 1: DASHBOARD & TODAY'S PRIORITIES
+         ========================================================================= -->
+    <section id="tab-home" class="tab-pane active">
+      <!-- Editorial Hero Header -->
+      <div class="hero-card">
+        <div class="hero-tag">Official ICAI Syllabus • 0 Negative Marking • 50% Passing Standard</div>
+        <h1 class="hero-title">
+          CA Final SPOM <span class="hero-highlight" id="hero-set-title">Set A · Corporate & Economic Laws</span>
+        </h1>
+        <p class="hero-desc">
+          Minimalist, intelligence-driven preparation portal for the <strong>ICAI Self-Paced Online Modules (SPOM)</strong>. Incorporates official BoS study material weightages, actual offline test recalls from TCS iON examination appointments, and faculty insights from CA Harsh Gupta, CA Shubham Singhal, and CA Sankalp Kanstiya.
+        </p>
+
+        <div class="hero-stats-row">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-total-q">68</span>
+            <span class="stat-label">Verified MCQs</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-offline-recalls">34</span>
+            <span class="stat-label">Offline Exam Recalls</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-high-priority-topics">20</span>
+            <span class="stat-label">High-Priority Topics</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-weightage-badge">70M + 30M</span>
+            <span class="stat-label">Section Allocation</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">50%</span>
+            <span class="stat-label">Qualifying Cutoff</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-pass-rate">50.0%</span>
+            <span class="stat-label">Mock Pass Rate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtle Syllabus & Amendment Note -->
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.9rem 1.25rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <span style="font-weight: 600; font-size: 0.9rem;" id="syllabus-scheme-title">
+            ICAI New Scheme 2024–2025
+          </span>
+          <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;" id="syllabus-scheme-notes">
+            Applicable for May 2024 / Nov 2024 / May 2025 / Nov 2025 examinations.
+          </span>
+        </div>
+        <span class="badge primary" id="syllabus-cutoff-badge">Verified Law</span>
+      </div>
+
+      <!-- Today's Study Priorities Box -->
+      <div class="study-today-card" id="study-today-box">
+        <div class="study-today-header">
+          <h3 class="study-today-title">Today's Study Priorities</h3>
+          <span class="badge">Recommended Focus</span>
+        </div>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Prioritized unrevised topics based on exam recall frequency and faculty recommendations, plus weak chapters with active mistakes:
+        </p>
+        <div id="study-today-items-container">
+          <div style="color: var(--text-dim); font-size: 0.9rem;">Loading daily study recommendations...</div>
+        </div>
+      </div>
+
+      <!-- Quick Exam Launchpad -->
+      <div class="grid-2" style="margin-bottom: 2.5rem;">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <h3 class="card-title">Official 100 Marks Mock</h3>
+            <span class="badge primary">TCS iON CBT</span>
+          </div>
+          <p class="card-desc" style="margin-bottom: 1.25rem;">
+            Full 50 questions examination (2 marks each = 100 marks) with 180-minute countdown timer, section tabs (Part I & Part II), and dynamic option shuffling.
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+            <span>180 Minutes • Zero Negative Marking</span>
+            <span>Passing: 50 / 100</span>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="app.startMockTest(app.currentSet, 'full_mock_50')">
+            Launch Official 100M Mock →
+          </button>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <h3 class="card-title">Power Blitz Mock</h3>
+            <span class="badge">Speed Drill</span>
+          </div>
+          <p class="card-desc" style="margin-bottom: 1.25rem;">
+            25 questions (50 marks) in a focused 45-minute sprint. Ideal for testing recall precision and time management under pressure.
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+            <span>45 Minutes • Section-balanced</span>
+            <span>25 Questions</span>
+          </div>
+          <button class="btn btn-secondary btn-block" onclick="app.startMockTest(app.currentSet, 'quick_blitz')">
+            Launch Power Blitz (45m) →
+          </button>
+        </div>
+      </div>
+
+      <!-- Syllabus Weightage Overview -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+          <h3 class="card-title">
+            Set <span class="current-set-label">A</span> · Official Chapter Weightage
+          </h3>
+          <span class="badge" id="section-split-badge">Part I: 70 Marks | Part II: 30 Marks</span>
+        </div>
+        <div id="chapters-weightage-container" class="grid-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 2: REVISION HANDBOOK & TOPIC PRIORITIES
+         ========================================================================= -->
+    <section id="tab-handbook" class="tab-pane">
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 class="card-title">Quick Revision Handbook & Topic Priorities</h2>
+            <p class="card-desc">
+              Distilled summaries, statutory limits, and comparison tables designed for efficient revision.
+            </p>
+          </div>
+          <div style="min-width: 280px;">
+            <select id="handbook-chapter-select" class="form-control" onchange="app.loadHandbookContent()">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Handbook Sub-Tabs -->
+        <div class="handbook-nav-tabs" style="margin-top: 1.25rem;">
+          <button class="handbook-tab-btn active" id="hb-tab-summary" onclick="app.switchHandbookCategory('summary')">Chapter Summary</button>
+          <button class="handbook-tab-btn" id="hb-tab-limits" onclick="app.switchHandbookCategory('formulas_limits')">Limits & Formulas</button>
+          <button class="handbook-tab-btn" id="hb-tab-confused" onclick="app.switchHandbookCategory('confused_concepts')">Confused Provisions</button>
+          <button class="handbook-tab-btn" id="hb-tab-traps" onclick="app.switchHandbookCategory('exam_traps')">Exam Traps</button>
+          <button class="handbook-tab-btn" id="hb-tab-intelligence" onclick="app.switchHandbookCategory('intelligence_topics')">Topic Priorities (0–100)</button>
+        </div>
+      </div>
+
+      <!-- Handbook Content Renderer -->
+      <div id="handbook-content-renderer" class="card">
+        <div style="color: var(--text-dim); padding: 2rem; text-align: center;">Loading handbook content...</div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 3: TESTING CENTRE (100M MOCK & 10 PRACTICE MODES)
+         ========================================================================= -->
+    <section id="tab-practice" class="tab-pane">
+      <!-- Practice Selector View -->
+      <div id="practice-selector-view">
+        <div class="card" style="margin-bottom: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="card-title">Testing Centre</h2>
+              <p class="card-desc">
+                Take the official 100 Marks Mock simulation or choose from 10 targeted practice modes with immediate option-by-option rationale.
+              </p>
+            </div>
+            <button class="btn btn-primary" onclick="app.startMockTest(app.currentSet, 'full_mock_50')">
+              Launch Official 100M Mock →
+            </button>
+          </div>
+        </div>
+
+                <!-- =========================================================================
+             CHAPTER & COMBINATION TESTING STUDIO
+             ========================================================================= -->
+        <div class="card" id="chapter-selection-card" style="margin-bottom: 2rem; border: 1px solid var(--border-subtle); background: var(--bg-surface);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span class="badge primary">Chapter Selection</span>
+                <h3 class="card-title" style="margin-bottom: 0; font-size: 1.15rem;">Chapter & Multi-Chapter Testing Studio</h3>
+              </div>
+              <p class="card-desc" style="margin-bottom: 0; font-size: 0.88rem;">
+                Select any individual chapter or combine multiple chapters to test your core focus areas, high-weightage topics, or customized combinations.
+              </p>
+            </div>
+            <!-- Quick Selection Presets -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectAllChapters(true)">Select All</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part I')">Part I Only</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part II')">Part II Only</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectHighWeightageChapters()">High Weightage (≥14M)</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="app.selectAllChapters(false)">Clear</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Chapter Selection Grid -->
+          <div id="chapter-select-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; max-height: 380px; overflow-y: auto; padding-right: 0.25rem;">
+            <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">
+              Loading chapters for testing...
+            </div>
+          </div>
+
+          <!-- Test Mode & Launch Control Bar -->
+          <div style="background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+              <div>
+                <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Selected Coverage</div>
+                <div id="chapter-selection-count-label" style="font-weight: 600; color: var(--text-main); font-size: 0.92rem;">
+                  0 Chapters Selected (0 MCQs)
+                </div>
+              </div>
+              <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
+              <div>
+                <label for="custom-test-count" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 0.25rem;">Questions Count</label>
+                <select id="custom-test-count" class="form-input" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--bg-surface);">
+                  <option value="10" selected>10 Questions (Sprint)</option>
+                  <option value="20">20 Questions</option>
+                  <option value="35">35 Questions</option>
+                  <option value="50">50 Questions</option>
+                  <option value="0">All Available MCQs</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="app.launchCustomChapterMock()" id="btn-custom-mock" title="Launch exam simulation with timer and final score evaluation">
+                Timed CBT Mock
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="app.launchCustomChapterDrill()" id="btn-custom-drill" title="Launch practice session with immediate rationale and mandatory answer testing">
+                Interactive Drill (Mandatory Testing) →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10 Practice Modes Grid -->
+        <h4 style="margin-bottom: 1rem; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+          Targeted Practice Drills
+        </h4>
+
+        <div class="grid-3" style="margin-bottom: 2rem;">
+          <div class="practice-mode-card" onclick="app.startPracticeSession('important')">
+            <div>
+              <div class="practice-mode-icon">★</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">High-Priority Topics</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Questions exclusively from topics scoring 85–100 on the exam intelligence model.
+              </p>
+            </div>
+            <span class="badge primary">Very High Yield</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('icai')">
+            <div>
+              <div class="practice-mode-icon">🏛</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">ICAI BoS & TYK</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Official ICAI study material, Test Your Knowledge questions, and Case Study booklet.
+              </p>
+            </div>
+            <span class="badge">Official Module</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('student_recall')">
+            <div>
+              <div class="practice-mode-icon">●</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Student Exam Recalls</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Actual questions reported by students from TCS iON test center appointments.
+              </p>
+            </div>
+            <span class="badge warning">Center Recalls</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('faculty_picked')">
+            <div>
+              <div class="practice-mode-icon">◆</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Faculty Recommended</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Curated problems highlighted by CA Harsh Gupta & CA Sankalp Kanstiya.
+              </p>
+            </div>
+            <span class="badge">Faculty Picks</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.openChapterPracticeModal()">
+            <div>
+              <div class="practice-mode-icon">§</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Chapter-Wise Drill</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Drill into any individual chapter (Directors, Board Meetings, FEMA, Throughput, TP).
+              </p>
+            </div>
+            <span class="badge">Selectable</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('mixed')">
+            <div>
+              <div class="practice-mode-icon">⚄</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Mixed Syllabus Drill</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Random questions across all chapters to test rapid cross-syllabus agility.
+              </p>
+            </div>
+            <span class="badge">Comprehensive</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('weak_area')">
+            <div>
+              <div class="practice-mode-icon">▲</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Weak Area Practice</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Focuses automatically on chapters where you previously made errors.
+              </p>
+            </div>
+            <span class="badge danger">Mistakes Target</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('mixed', 10)">
+            <div>
+              <div class="practice-mode-icon">⏱</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">10-Question Sprint</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Fast, concise 10-question sprint for quick review between study sessions.
+              </p>
+            </div>
+            <span class="badge">10 Questions</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('case_scenarios')">
+            <div>
+              <div class="practice-mode-icon">▤</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Integrated Case Scenarios</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Multi-part case scenarios testing practical application of legal and costing frameworks.
+              </p>
+            </div>
+            <span class="badge">Case Scenarios</span>
+          </div>
+
+          <div class="practice-mode-card" onclick="app.startPracticeSession('adaptive')">
+            <div>
+              <div class="practice-mode-icon">◈</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Adaptive Practice</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Smart selection weighting previously unattempted and failed questions.
+              </p>
+            </div>
+            <span class="badge primary">Adaptive</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Practice Quiz View -->
+      <div id="practice-quiz-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+          <button class="btn btn-secondary btn-sm" onclick="app.exitPracticeSession()">
+            ← Back to Testing Centre
+          </button>
+          <span class="badge" id="practice-mode-badge">Mode: Practice</span>
+        </div>
+
+        <div class="card" id="practice-card">
+          <div class="question-meta-bar">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <strong id="practice-q-counter" style="font-size: 0.9rem;">Question 1 of 10</strong>
+              <span class="badge warning" id="practice-mandatory-badge" style="font-size: 0.72rem; letter-spacing: 0.04em;">Mandatory Testing</span>
+              <span class="badge primary" id="practice-q-chapter">Chapter</span>
+              <span class="badge" id="practice-q-source">Source</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button class="bookmark-star-btn" id="practice-star-btn" onclick="app.togglePracticeBookmark()" title="Star question">★</button>
+              <span class="badge success" id="practice-q-marks">+2 Marks</span>
+            </div>
+          </div>
+
+          <!-- Practice Case Scenario Banner -->
+          <div id="practice-case-box" class="case-scenario-box" style="display: none; margin-top: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+              <h5 style="margin: 0;">Case Scenario Context</h5>
+              <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+            </div>
+            <p id="practice-case-text" style="font-size: 0.95rem; line-height: 1.65; color: var(--text-secondary); white-space: pre-line; margin: 0;"></p>
+          </div>
+
+          <div class="question-text" id="practice-q-text">
+            Loading question...
+          </div>
+
+          <div class="options-container" id="practice-options-container">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Solution & Rationale Panel -->
+          <div id="practice-feedback-panel" class="explanation-box" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <h6 style="margin: 0;">Statutory Rationale & Options Breakdown</h6>
+              <span id="practice-result-pill" class="badge success">Correct</span>
+            </div>
+            <p id="practice-explanation-text" style="font-size: 0.92rem; margin-bottom: 1rem; line-height: 1.6;"></p>
+
+            <div id="practice-options-breakdown" style="margin-bottom: 1rem;">
+              <!-- Populated by JS -->
+            </div>
+
+            <div id="practice-section-ref" style="font-weight: 600; color: var(--accent-gold); font-size: 0.88rem;"></div>
+            <div id="practice-exam-tip" class="exam-trap-box"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; margin-top: 1.5rem; align-items: center;">
+            <button class="btn btn-secondary btn-sm" id="btn-practice-prev" onclick="app.prevPracticeQuestion()">← Previous</button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-outline btn-sm" id="btn-practice-check" onclick="app.checkPracticeAnswer()">Check Answer</button>
+              <button class="btn btn-primary btn-sm" id="btn-practice-next" onclick="app.nextPracticeQuestion()">Next Question →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 4: CBT 100M MOCK SIMULATOR
+         ========================================================================= -->
+    <section id="tab-mock" class="tab-pane">
+      <div class="exam-layout">
+        <!-- Main Exam Area -->
+        <div class="exam-main">
+          <!-- Header with Timer -->
+          <div class="exam-header">
+            <div>
+              <span class="exam-subject-badge" id="exam-badge-set">SET A · CORPORATE & ECONOMIC LAWS</span>
+              <div style="font-size: 0.82rem; color: var(--text-muted);" id="exam-mode-indicator">
+                100 Marks Official CBT Mock
+              </div>
+            </div>
+            <div class="exam-timer" id="exam-timer-display" title="Remaining Time">
+              <span id="timer-text">180:00</span>
+            </div>
+          </div>
+
+          <!-- Section Tabs -->
+          <div class="exam-section-tabs" id="exam-section-tabs-container">
+            <button class="sec-tab-btn active" id="sec-tab-all" onclick="app.filterMockSection('all')">
+              All Questions (<span id="sec-count-all">50</span>)
+            </button>
+            <button class="sec-tab-btn" id="sec-tab-p1" onclick="app.filterMockSection('Part I')">
+              Part I (<span id="sec-count-p1">35</span>)
+            </button>
+            <button class="sec-tab-btn" id="sec-tab-p2" onclick="app.filterMockSection('Part II')">
+              Part II (<span id="sec-count-p2">15</span>)
+            </button>
+          </div>
+
+          <!-- Question Body -->
+          <div class="exam-body">
+            <div id="exam-case-box" class="case-scenario-box" style="display: none; margin-bottom: 1.25rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <h5 style="margin: 0;">Case Scenario Context</h5>
+                <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+              </div>
+              <p id="exam-case-text" style="font-size: 0.95rem; line-height: 1.65; color: var(--text-secondary); white-space: pre-line; margin: 0;"></p>
+            </div>
+
+            <div class="question-meta-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <strong>Question <span id="curr-q-num">1</span></strong> of <span id="total-q-num">50</span>
+                <span class="badge primary" id="curr-q-chapter">Directors</span>
+                <span class="badge" id="curr-q-source">Offline Recall</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="bookmark-star-btn" id="curr-q-star-btn" onclick="app.toggleCurrentBookmark()" title="Star question">
+                  ★
+                </button>
+                <span class="badge success" id="curr-q-marks">+2.0 Marks</span>
+                <span class="badge">0.0 Neg.</span>
+              </div>
+            </div>
+
+            <div class="question-text" id="curr-q-text">
+              Loading question...
+            </div>
+
+            <div class="options-container" id="curr-options-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Footer Controls -->
+          <div class="exam-footer">
+            <div class="exam-footer-left">
+              <button class="btn btn-secondary btn-sm" id="btn-prev-q" onclick="app.prevQuestion()">
+                ← Previous
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="app.clearCurrentResponse()">
+                Clear Response
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="app.markForReviewAndNext()">
+                Mark Review & Next
+              </button>
+            </div>
+            <div class="exam-footer-right">
+              <button class="btn btn-primary" id="btn-save-next" onclick="app.saveAndNext()">
+                Save & Next →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Question Palette -->
+        <aside class="exam-sidebar">
+          <div class="sidebar-title">
+            <span>Question Palette</span>
+            <span class="badge" id="palette-count-summary">0/50</span>
+          </div>
+
+          <div class="palette-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cbt-answered);"></div>
+              <span>Answered</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cbt-not-answered);"></div>
+              <span>Not Answered</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cbt-review);"></div>
+              <span>Marked Review</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cbt-answered-review);"></div>
+              <span>Ans & Review</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cbt-not-visited);"></div>
+              <span>Not Visited</span>
+            </div>
+          </div>
+
+          <div class="palette-grid" id="palette-grid-buttons">
+            <!-- Buttons populated dynamically -->
+          </div>
+
+          <div class="submit-box">
+            <button class="btn btn-primary btn-block btn-lg" onclick="app.confirmSubmitModal()">
+              Submit Mock Test
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 5: MOCK RESULTS REVIEW
+         ========================================================================= -->
+    <section id="tab-result" class="tab-pane">
+      <div id="result-status-card" class="result-header-card passed">
+        <div class="result-status-title" id="res-status-title">QUALIFIED</div>
+        <p id="res-status-subtitle" style="font-size: 0.95rem; color: var(--text-muted);">
+          You scored above the mandatory 50% ICAI SPOM passing benchmark.
+        </p>
+        <div class="result-score-big" id="res-score-display">76 / 100</div>
+
+        <div class="result-meta-row">
+          <div class="result-meta-item">
+            <span class="val" id="res-val-percent">0.0%</span>
+            <span class="lbl">Percentage</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-total-q">50</span>
+            <span class="lbl">Total Questions</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-attempted">0</span>
+            <span class="lbl">Attempted</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-unattempted">0</span>
+            <span class="lbl">Unattempted (0M)</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-correct">0</span>
+            <span class="lbl">Correct (+2M)</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-incorrect">0</span>
+            <span class="lbl">Incorrect (0M)</span>
+          </div>
+          <div class="result-meta-item">
+            <span class="val" id="res-val-time">0m 0s</span>
+            <span class="lbl">Time Taken</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Breakdown -->
+      <div class="grid-2" style="margin-bottom: 2rem;">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong id="res-sec1-label">Part I: Corporate Laws (70 Marks)</strong>
+            <span class="badge primary" id="res-sec1-badge">0 / 70 (0.0%)</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="res-sec1-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong id="res-sec2-label">Part II: Economic Laws (30 Marks)</strong>
+            <span class="badge primary" id="res-sec2-badge">0 / 30 (0.0%)</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="res-sec2-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <h3 class="card-title">Solution Review</h3>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" id="btn-rev-all" onclick="app.filterReview('all')">All (<span id="rev-filter-all">50</span>)</button>
+          <button class="btn btn-secondary btn-sm" id="btn-rev-correct" onclick="app.filterReview('correct')">Correct (<span id="rev-filter-correct">0</span>)</button>
+          <button class="btn btn-secondary btn-sm" id="btn-rev-incorrect" onclick="app.filterReview('incorrect')">Incorrect (<span id="rev-filter-incorrect">0</span>)</button>
+          <button class="btn btn-secondary btn-sm" id="btn-rev-unattempted" onclick="app.filterReview('unattempted')">Unattempted (<span id="rev-filter-unattempted">0</span>)</button>
+          <button class="btn btn-primary btn-sm" onclick="app.startMockTest(app.currentSet, app.currentMockMode)">Re-Attempt Test →</button>
+        </div>
+      </div>
+
+      <!-- Review Questions Container -->
+      <div id="review-questions-list">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 6: MY MISTAKES BOOK & STARRED QUESTIONS
+         ========================================================================= -->
+    <section id="tab-mistakes" class="tab-pane">
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 class="card-title">My Mistakes Book & Revision Tracker</h2>
+            <p class="card-desc">
+              Incorrect answers are automatically captured here for spaced revision. Track questions from <strong>Unrevised</strong> to <strong>Reviewed</strong> to <strong>Mastered</strong>.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm active" id="mb-filter-all" onclick="app.filterMistakes('all')">All Mistakes</button>
+            <button class="btn btn-secondary btn-sm" id="mb-filter-unrevised" onclick="app.filterMistakes('Unrevised')">Unrevised</button>
+            <button class="btn btn-secondary btn-sm" id="mb-filter-reviewed" onclick="app.filterMistakes('Reviewed')">Reviewed</button>
+            <button class="btn btn-secondary btn-sm" id="mb-filter-mastered" onclick="app.filterMistakes('Mastered')">Mastered</button>
+            <button class="btn btn-outline btn-sm" id="mb-filter-starred" onclick="app.filterMistakes('starred')">★ Starred</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="mistakes-list-container">
+        <!-- Populated by JS -->
+        <div style="text-align: center; color: var(--text-dim); padding: 3rem;">No mistakes logged yet. Take a practice drill or mock test.</div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 7: MCQ STUDIO & RESEARCH ARCHIVE
+         ========================================================================= -->
+    <section id="tab-studio" class="tab-pane">
+      <div class="grid-2">
+        <!-- Bulk Upload Box -->
+        <div class="card">
+          <h3 class="card-title">Bulk Upload MCQs (CSV / JSON)</h3>
+          <p class="card-desc" style="margin-bottom: 1.25rem;">
+            Import multiple MCQs into the SQLite database with automatic validation of fields and answer keys.
+          </p>
+
+          <div class="file-dropzone" onclick="document.getElementById('bulk-file-input').click()">
+            <div class="dropzone-icon">↓</div>
+            <h4 style="font-weight: 600; font-size: 0.95rem;">Select or Drag CSV / JSON File</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Strict schema format
+            </p>
+            <input type="file" id="bulk-file-input" style="display: none;" accept=".csv,.json" onchange="app.handleBulkFileUpload(event)">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem;">
+            <span style="font-size: 0.82rem; color: var(--text-dim);">Download templates:</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <a href="/api/template/csv" download class="btn btn-secondary btn-sm">Sample CSV</a>
+              <a href="/api/template/json" download class="btn btn-secondary btn-sm">Sample JSON</a>
+            </div>
+          </div>
+
+          <div id="upload-status-box" style="margin-top: 1rem; display: none;"></div>
+        </div>
+
+        <!-- Single MCQ Builder Form -->
+        <div class="card">
+          <h3 class="card-title">Create Single MCQ</h3>
+          <p class="card-desc" style="margin-bottom: 1.25rem;">
+            Add a question with section references, options rationale, and exam trap tips.
+          </p>
+
+          <form id="create-mcq-form" onsubmit="app.handleCreateMCQ(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Set</label>
+                <select id="new-mcq-set" class="form-control" onchange="app.updateChapterDropdownForForm()">
+                  <option value="A">Set A · Law</option>
+                  <option value="B">Set B · SCPM</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Chapter</label>
+                <select id="new-mcq-chapter" class="form-control">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Topic</label>
+                <input type="text" id="new-mcq-topic" class="form-control" placeholder="e.g. Quorum for Board Meeting" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Source Tag</label>
+                <select id="new-mcq-source" class="form-control">
+                  <option value="Offline SPOM Recall">Offline SPOM Recall</option>
+                  <option value="ICAI BoS Module">ICAI BoS Module</option>
+                  <option value="Faculty Recommended">Faculty Recommended</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Question Text</label>
+              <textarea id="new-mcq-question" class="form-control" placeholder="Type question..." required></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Option A</label>
+                <input type="text" id="new-mcq-opt-a" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Option B</label>
+                <input type="text" id="new-mcq-opt-b" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Option C</label>
+                <input type="text" id="new-mcq-opt-c" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Option D</label>
+                <input type="text" id="new-mcq-opt-d" class="form-control" required>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Correct Option</label>
+                <select id="new-mcq-correct" class="form-control">
+                  <option value="A">Option A</option>
+                  <option value="B">Option B</option>
+                  <option value="C">Option C</option>
+                  <option value="D">Option D</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Section Reference</label>
+                <input type="text" id="new-mcq-sec" class="form-control" placeholder="e.g. Section 174(3)">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Explanation</label>
+              <textarea id="new-mcq-exp" class="form-control" placeholder="Statutory rationale..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Exam Trap Tip</label>
+              <input type="text" id="new-mcq-tip" class="form-control" placeholder="e.g. Beware of 'whichever is later' rule">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              Save MCQ to Database
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Question Bank Directory -->
+      <div class="card" style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+          <h3 class="card-title">Question Bank Directory</h3>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="text" id="qb-search-input" class="form-control" placeholder="Search questions..." style="width: 240px;" oninput="app.filterQBTable()">
+            <button class="btn btn-secondary btn-sm" onclick="app.loadQBTable()">Refresh</button>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;" id="qb-table">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-subtle); text-align: left; color: var(--text-dim);">
+                <th style="padding: 0.75rem;">ID</th>
+                <th style="padding: 0.75rem;">Set</th>
+                <th style="padding: 0.75rem;">Source</th>
+                <th style="padding: 0.75rem;">Topic</th>
+                <th style="padding: 0.75rem;">Question</th>
+                <th style="padding: 0.75rem;">Ans</th>
+                <th style="padding: 0.75rem;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="qb-table-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Research Audit Log -->
+      <div class="card" style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h3 class="card-title">Research Records & Ingestion Log</h3>
+            <p class="card-desc">Verified sources from ICAI BoS Knowledge Portal, student community recalls, and faculty marathons.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="app.openResearchModal()">+ Ingest Source / URL</button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="handbook-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Set</th>
+                <th>Source Type</th>
+                <th>Author</th>
+                <th>Title & URL</th>
+                <th>Topics</th>
+                <th>Reliability</th>
+              </tr>
+            </thead>
+            <tbody id="research-log-table-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Submit Test Confirmation Modal -->
+  <div class="modal-overlay" id="submit-confirm-modal">
+    <div class="modal-content">
+      <h3 class="modal-title">Confirm Submission</h3>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem;">Are you ready to submit your test for scoring? Here is your attempt summary:</p>
+        <div style="background: var(--bg-elevated); padding: 1rem; border-radius: var(--radius-md); font-size: 0.92rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+            <span>Total Questions:</span> <strong id="modal-total-count">50</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; color: var(--success);">
+            <span>Answered:</span> <strong id="modal-answered-count">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; color: var(--danger);">
+            <span>Not Answered:</span> <strong id="modal-unanswered-count">50</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+            <span>Marked for Review:</span> <strong id="modal-review-count">0</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="app.closeSubmitModal()">Resume Test</button>
+        <button class="btn btn-primary" onclick="app.executeSubmitTest()">Yes, Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Research Source Ingestion Modal -->
+  <div class="modal-overlay" id="research-ingest-modal">
+    <div class="modal-content" style="max-width: 560px;">
+      <h3 class="modal-title">Log Research Record</h3>
+      <div class="modal-body">
+        <form id="research-ingest-form" onsubmit="app.handleResearchIngest(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Set</label>
+              <select id="res-ingest-set" class="form-control">
+                <option value="A">Set A · Law</option>
+                <option value="B">Set B · SCPM</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Source Type</label>
+              <select id="res-ingest-type" class="form-control">
+                <option value="Reddit / Student Recall">Reddit / Student Recall</option>
+                <option value="YouTube / Faculty">YouTube / Faculty</option>
+                <option value="ICAI Official">ICAI Official</option>
+                <option value="Educational Forum">Educational Forum</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Author / Origin</label>
+            <input type="text" id="res-ingest-author" class="form-control" placeholder="e.g. CA Harsh Gupta / r/CharteredAccountants" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input type="text" id="res-ingest-title" class="form-control" placeholder="Summary heading..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reference URL</label>
+            <input type="url" id="res-ingest-url" class="form-control" placeholder="https://..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Summary & Key Provisions Tested</label>
+            <textarea id="res-ingest-summary" class="form-control" placeholder="Core provisions, question format, traps recalled..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Extracted Topics</label>
+            <input type="text" id="res-ingest-topics" class="form-control" placeholder="e.g. Sec 186(2) loans, Independent Director cooling">
+          </div>
+          <div class="modal-actions" style="margin-top: 1.25rem;">
+            <button type="button" class="btn btn-secondary" onclick="app.closeResearchModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Record</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Practice Drill Completion Summary Modal -->
+  <div class="modal-overlay" id="practice-complete-modal">
+    <div class="modal-content" style="max-width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+        <span class="badge primary">Practice Completed</span>
+        <span style="font-size: 0.82rem; color: var(--text-dim);" id="practice-complete-time">Time: 4m 12s</span>
+      </div>
+      <h3 class="modal-title" id="practice-complete-title" style="margin-bottom: 0.25rem;">Drill Performance Summary</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem;" id="practice-complete-subtitle">
+        Performance evaluation across all tested questions in this drill.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div style="background: var(--bg-elevated); padding: 0.85rem; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border-subtle);">
+          <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Score</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);" id="practice-complete-score">0 / 20</div>
+        </div>
+        <div style="background: var(--bg-elevated); padding: 0.85rem; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border-subtle);">
+          <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Accuracy</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-gold);" id="practice-complete-pct">0%</div>
+        </div>
+        <div style="background: var(--bg-elevated); padding: 0.85rem; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border-subtle);">
+          <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Correct / Total</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--success);" id="practice-complete-ratio">0 / 10</div>
+        </div>
+      </div>
+
+      <div id="practice-complete-notes" style="background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--accent-gold); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
+        Incorrect questions have been automatically catalogued in <strong>My Mistakes Book</strong> for spaced revision.
+      </div>
+
+      <div class="modal-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap;">
+        <button class="btn btn-secondary" onclick="app.closePracticeCompleteModal(); app.showTab('mistakes');">
+          Open Mistakes Book
+        </button>
+        <button class="btn btn-outline" onclick="app.closePracticeCompleteModal(); app.restartCurrentPractice();">
+          Retake Drill
+        </button>
+        <button class="btn btn-primary" onclick="app.closePracticeCompleteModal(); app.exitPracticeSession();">
+          Return to Testing Centre
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Minimalist Luxury Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <div>
+        <strong>CA Final · SPOM</strong> • Self-Paced Online Modules Preparation Engine
+      </div>
+      <div>
+        Official Section Weightages • Option Shuffling • Spaced Revision Engine
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="app.js?v=2.3"></script>
+</body>
+</html>

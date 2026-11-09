@@ -1,0 +1,4 @@
+# CA Final SPOM Exam Preparation Portal - Requirements
+# The backend runs natively on Python's built-in ThreadingHTTPServer and SQLite3.
+# Zero external dependencies ensure blazing-fast build times (under 30 seconds) on Render.
+wheel>=0.42.0
