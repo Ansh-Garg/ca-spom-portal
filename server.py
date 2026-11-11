@@ -20,8 +20,7 @@ import database
 import seed_data
 import seed_intelligence
 
-# Support dynamic port from Render / Heroku / Cloud environments or default 8080
-PORT = int(os.environ.get('PORT', 8080))
+PORT = 8080
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 
@@ -998,34 +997,19 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
 
         self.send_json({"success": False, "error": f"Endpoint not found: {path}"}, status_code=404)
 
-def run_server(port=None):
-    if port is None:
-        port = int(os.environ.get('PORT', PORT))
-
+def run_server(port=PORT):
     database.init_db()
     seed_data.seed_database()
     seed_intelligence.seed_intelligence()
-    try:
-        import seed_spom_set_a_comprehensive
-        seed_spom_set_a_comprehensive.seed_database()
-    except Exception as e:
-        print(f"[INIT] Note on comprehensive seed: {e}")
-    try:
-        import seed_spom_set_a_expansion
-        seed_spom_set_a_expansion.seed_expansion()
-    except Exception as e:
-        print(f"[INIT] Note on expansion seed: {e}")
 
-    # Bind to 0.0.0.0 for containerized hosting platforms (Render, Railway, Docker)
-    server_address = ('0.0.0.0', port)
+    server_address = ('', port)
     httpd = ThreadingHTTPServer(server_address, SPOMRequestHandler)
     print(f"============================================================")
     print(f" CA FINAL SPOM HIGH-STAKES EXAM PORTAL")
-    print(f" Port: {port} | Host: 0.0.0.0 | Root: {PUBLIC_DIR}")
+    print(f" Port: {port} | Root: {PUBLIC_DIR}")
     print(f" Set A: Part I Corporate Laws (70M) + Part II Economic Laws (30M)")
     print(f" Set B: Part I Strategic Cost (50M) + Part II Performance (50M)")
     print(f" Dynamic Shuffling & Provenance Tracking Active")
-    print(f" Ready for Desktop and Mobile Browsers")
     print(f"============================================================")
     try:
         httpd.serve_forever()
@@ -1034,12 +1018,5 @@ def run_server(port=None):
         httpd.server_close()
 
 if __name__ == '__main__':
-    # Prioritize PORT environment variable (Render), then command line arg, then default
-    env_port = os.environ.get('PORT')
-    if env_port:
-        port = int(env_port)
-    elif len(sys.argv) > 1:
-        port = int(sys.argv[1])
-    else:
-        port = PORT
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
     run_server(port)

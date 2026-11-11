@@ -8,7 +8,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spom_portal.db")
+DB_PATH = r"C:\Users\Ansh\Desktop\Coding\ca-spom-portal\spom_portal.db"
 
 # ==============================================================================
 # CASE STUDY 6: Corporate Takeover, Moratorium & Section 29A Resolution Disqualification
