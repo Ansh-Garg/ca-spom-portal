@@ -211,12 +211,12 @@
     <section id="tab-practice" class="tab-pane">
       <!-- Practice Selector View -->
       <div id="practice-selector-view">
-        <div class="card" style="margin-bottom: 2rem;">
+        <div class="card" style="margin-bottom: 1.5rem;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
             <div>
               <h2 class="card-title">Testing Centre</h2>
               <p class="card-desc">
-                Take the official 100 Marks Mock simulation or choose from 10 targeted practice modes with immediate option-by-option rationale.
+                Evaluate question bank coverage, target unseen or weak questions by mastery cohort, or take official 100M mock simulations.
               </p>
             </div>
             <button class="btn btn-primary" onclick="app.startMockTest(app.currentSet, 'full_mock_50')">
@@ -225,184 +225,418 @@
           </div>
         </div>
 
-                <!-- =========================================================================
-             CHAPTER & COMBINATION TESTING STUDIO
+        <!-- Testing Centre Sub-Navigation Bar -->
+        <div class="testing-centre-subtabs">
+          <button type="button" class="testing-subtab-btn active" id="btn-subtab-coverage" onclick="app.switchTestingSubtab('coverage')">
+            <span>📊</span> Question Bank Coverage & Mastery Hub
+          </button>
+          <button type="button" class="testing-subtab-btn" id="btn-subtab-chapters" onclick="app.switchTestingSubtab('chapters')">
+            <span>📚</span> Chapter & Multi-Chapter Studio
+          </button>
+          <button type="button" class="testing-subtab-btn" id="btn-subtab-presets" onclick="app.switchTestingSubtab('presets')">
+            <span>🎯</span> 100M Mock & Targeted Modes
+          </button>
+        </div>
+
+        <!-- =========================================================================
+             SUBTAB 1: QUESTION BANK COVERAGE & COHORT TESTING (REQUESTED FEATURE)
              ========================================================================= -->
-        <div class="card" id="chapter-selection-card" style="margin-bottom: 2rem; border: 1px solid var(--border-subtle); background: var(--bg-surface);">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
-                <span class="badge primary">Chapter Selection</span>
-                <h3 class="card-title" style="margin-bottom: 0; font-size: 1.15rem;">Chapter & Multi-Chapter Testing Studio</h3>
-              </div>
-              <p class="card-desc" style="margin-bottom: 0; font-size: 0.88rem;">
-                Select any individual chapter or combine multiple chapters to test your core focus areas, high-weightage topics, or customized combinations.
-              </p>
-            </div>
-            <!-- Quick Selection Presets -->
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectAllChapters(true)">Select All</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part I')">Part I Only</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part II')">Part II Only</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectHighWeightageChapters()">High Weightage (≥14M)</button>
-              <button type="button" class="btn btn-outline btn-sm" onclick="app.selectAllChapters(false)">Clear</button>
-            </div>
-          </div>
-
-          <!-- Dynamic Chapter Selection Grid -->
-          <div id="chapter-select-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; max-height: 380px; overflow-y: auto; padding-right: 0.25rem;">
-            <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">
-              Loading chapters for testing...
-            </div>
-          </div>
-
-          <!-- Test Mode & Launch Control Bar -->
-          <div style="background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+        <div id="testing-view-coverage" class="testing-subtab-pane">
+          <!-- Coverage Header & Progress Meter Card -->
+          <div class="coverage-progress-wrapper">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
               <div>
-                <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Selected Coverage</div>
-                <div id="chapter-selection-count-label" style="font-weight: 600; color: var(--text-main); font-size: 0.92rem;">
-                  0 Chapters Selected (0 MCQs)
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span class="badge primary" id="coverage-set-badge">Set A · Law</span>
+                  <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Question Bank Coverage</h3>
+                </div>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-muted);">
+                  Size of Question Bank: <strong id="coverage-total-bank" style="color: var(--text-main);">206 High-Yield MCQs</strong>. Track your progress across unseen questions, repeat errors, and mastered topics.
+                </p>
+              </div>
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <div style="text-align: right;">
+                  <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">Bank Coverage</div>
+                  <div id="coverage-pct-headline" style="font-size: 1.4rem; font-weight: 700; font-family: var(--font-serif); color: var(--text-main);">
+                    34.0%
+                  </div>
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-muted); border-left: 1px solid var(--border-subtle); padding-left: 0.75rem;">
+                  <span id="coverage-attempted-stat" style="font-weight: 600; color: var(--text-main);">70</span> of <span id="coverage-total-stat">206</span> Attempted
                 </div>
               </div>
-              <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
+            </div>
+
+            <!-- Segmented Progress Bar -->
+            <div class="coverage-bar-track" title="Coverage Breakdown: Mastered, Needs Practice, Unseen">
+              <div id="cov-bar-mastered" class="coverage-segment-mastered" style="width: 17%;" title="Mastered / Consistent Correct"></div>
+              <div id="cov-bar-wrong" class="coverage-segment-wrong" style="width: 17%;" title="Needs Practice / Repeat Errors"></div>
+              <div id="cov-bar-unseen" class="coverage-segment-unseen" style="width: 66%;" title="Never Attempted (Unseen)"></div>
+            </div>
+
+            <!-- Legend with counts and percentages -->
+            <div class="coverage-legend">
+              <div class="coverage-legend-item">
+                <span class="coverage-dot" style="background: #3B6B50;"></span>
+                <span><strong>Mastered:</strong> <span id="leg-mastered-count">35</span> (<span id="leg-mastered-pct">17.0%</span>)</span>
+              </div>
+              <div class="coverage-legend-item">
+                <span class="coverage-dot" style="background: #C46868;"></span>
+                <span><strong>Needs Practice:</strong> <span id="leg-wrong-count">36</span> (<span id="leg-wrong-pct">17.5%</span>)</span>
+              </div>
+              <div class="coverage-legend-item">
+                <span class="coverage-dot" style="background: #9E9A90;"></span>
+                <span><strong>Never Attempted:</strong> <span id="leg-unseen-count">136</span> (<span id="leg-unseen-pct">66.0%</span>)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Interactive Cohort Blocks -->
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 600; margin-bottom: 0.5rem;">
+              Select a Question Cohort to Practice or Test:
+            </div>
+          </div>
+
+          <div class="cohort-cards-grid">
+            <!-- 1. Never Attempted -->
+            <div class="cohort-card selected" id="card-cohort-never_attempted" onclick="app.selectCoverageCohort('never_attempted')">
               <div>
-                <label for="custom-test-count" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 0.25rem;">Questions Count</label>
-                <select id="custom-test-count" class="form-input" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--bg-surface);">
-                  <option value="10" selected>10 Questions (Sprint)</option>
-                  <option value="20">20 Questions</option>
-                  <option value="35">35 Questions</option>
-                  <option value="50">50 Questions</option>
-                  <option value="0">All Available MCQs</option>
-                </select>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                  <span class="badge" id="cohort-badge-never_attempted">Unseen Pool</span>
+                </div>
+                <div class="cohort-count-display" id="cohort-count-never_attempted" style="color: var(--text-main);">136</div>
+                <div class="cohort-title">Never Attempted</div>
+                <div class="cohort-desc">
+                  Fresh, untouched questions you have never seen or answered. Drill these to achieve 100% question bank coverage.
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+                  <span id="cohort-pct-never_attempted">66.0%</span> of Question Bank
+                </span>
               </div>
             </div>
 
-            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-              <button type="button" class="btn btn-outline btn-sm" onclick="app.launchCustomChapterMock()" id="btn-custom-mock" title="Launch exam simulation with timer and final score evaluation">
-                Timed CBT Mock
+            <!-- 2. Wrong Many Times / Needs Practice -->
+            <div class="cohort-card" id="card-cohort-wrong_many_times" onclick="app.selectCoverageCohort('wrong_many_times')">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                  <span class="badge danger" id="cohort-badge-wrong_many_times">Needs Practice</span>
+                </div>
+                <div class="cohort-count-display" id="cohort-count-wrong_many_times" style="color: var(--danger);">36</div>
+                <div class="cohort-title">Wrong Many Times</div>
+                <div class="cohort-desc">
+                  High-risk questions where you made repeat errors or last answered incorrectly. Drill to eliminate tricky exam traps.
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; font-weight: 600; color: var(--danger); text-transform: uppercase;">
+                  Active Mistakes & Traps
+                </span>
+              </div>
+            </div>
+
+            <!-- 3. Correct Many Times / Mastered -->
+            <div class="cohort-card" id="card-cohort-correct_many_times" onclick="app.selectCoverageCohort('correct_many_times')">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                  <span class="badge success" id="cohort-badge-correct_many_times">Mastered</span>
+                </div>
+                <div class="cohort-count-display" id="cohort-count-correct_many_times" style="color: var(--success);">35</div>
+                <div class="cohort-title">Correct Many Times</div>
+                <div class="cohort-desc">
+                  Questions answered correctly with proven conceptual accuracy. Quick sprint review to retain peak recall before exams.
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; font-weight: 600; color: var(--success); text-transform: uppercase;">
+                  Proven Accuracy
+                </span>
+              </div>
+            </div>
+
+            <!-- 4. Questions Attempted (All) -->
+            <div class="cohort-card" id="card-cohort-attempted" onclick="app.selectCoverageCohort('attempted')">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                  <span class="badge primary" id="cohort-badge-attempted">Cumulative Pool</span>
+                </div>
+                <div class="cohort-count-display" id="cohort-count-attempted" style="color: var(--accent-gold);">70</div>
+                <div class="cohort-title">Questions Attempted</div>
+                <div class="cohort-desc">
+                  The complete cumulative pool of all questions tested so far across your CBT mocks and practice sessions.
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+                  <span id="cohort-pct-attempted">34.0%</span> Covered So Far
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Cohort Test Launcher Console -->
+          <div class="cohort-launch-console" id="cohort-launch-console">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span class="badge primary" id="active-cohort-badge">Selected Cohort</span>
+                  <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700;" id="active-cohort-title">
+                    Never Attempted (Unseen Questions)
+                  </h4>
+                </div>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-muted);" id="active-cohort-subtitle">
+                  Configure and launch a practice drill or timed mock on the selected 136 questions.
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.82rem; color: var(--text-dim);">Available in Pool:</span>
+                <span class="badge primary" id="active-cohort-available-count" style="font-size: 0.9rem; font-weight: 700;">136 MCQs</span>
+              </div>
+            </div>
+
+            <div style="background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                <div>
+                  <label for="cohort-chapter-select" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 0.35rem;">
+                    Filter by Chapter
+                  </label>
+                  <select id="cohort-chapter-select" class="form-input" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto; min-width: 200px; background: var(--bg-surface);" onchange="app.onCohortChapterChange()">
+                    <option value="all">All Chapters in Cohort</option>
+                  </select>
+                </div>
+                <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
+                <div>
+                  <label for="cohort-count-select" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 0.35rem;">
+                    Questions Count
+                  </label>
+                  <select id="cohort-count-select" class="form-input" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--bg-surface);">
+                    <option value="10" selected>10 Questions (Sprint)</option>
+                    <option value="20">20 Questions</option>
+                    <option value="35">35 Questions</option>
+                    <option value="50">50 Questions</option>
+                    <option value="0">All Available in Cohort</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="app.launchCohortMock()" id="btn-cohort-mock" title="Launch exam simulation with timer and score evaluation">
+                  Timed CBT Mock
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="app.launchCohortDrill()" id="btn-cohort-drill" title="Launch practice session with immediate rationale and mandatory answer testing">
+                  Interactive Practice Drill →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chapter Coverage Breakdown Accordion / Grid -->
+          <div class="card" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Chapter-by-Chapter Bank Coverage</h4>
+                <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">
+                  Examine your progress across individual syllabus modules and target chapters with unattempted questions.
+                </p>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="app.toggleChapterCoverageDetails()" id="btn-toggle-coverage-details">
+                Show Detailed Chapter Grid ↓
               </button>
-              <button type="button" class="btn btn-primary btn-sm" onclick="app.launchCustomChapterDrill()" id="btn-custom-drill" title="Launch practice session with immediate rationale and mandatory answer testing">
-                Interactive Drill (Mandatory Testing) →
-              </button>
+            </div>
+            <div id="chapter-coverage-details-container" style="display: none;">
+              <div id="chapter-coverage-list" style="border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden;">
+                <!-- Populated dynamically via renderCoverageHub() -->
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 10 Practice Modes Grid -->
-        <h4 style="margin-bottom: 1rem; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
-          Targeted Practice Drills
-        </h4>
-
-        <div class="grid-3" style="margin-bottom: 2rem;">
-          <div class="practice-mode-card" onclick="app.startPracticeSession('important')">
-            <div>
-              <div class="practice-mode-icon">★</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">High-Priority Topics</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Questions exclusively from topics scoring 85–100 on the exam intelligence model.
-              </p>
+        <!-- =========================================================================
+             SUBTAB 2: CHAPTER & COMBINATION TESTING STUDIO
+             ========================================================================= -->
+        <div id="testing-view-chapters" class="testing-subtab-pane" style="display: none;">
+          <div class="card" id="chapter-selection-card" style="margin-bottom: 2rem; border: 1px solid var(--border-subtle); background: var(--bg-surface);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span class="badge primary">Chapter Selection</span>
+                  <h3 class="card-title" style="margin-bottom: 0; font-size: 1.15rem;">Chapter & Multi-Chapter Testing Studio</h3>
+                </div>
+                <p class="card-desc" style="margin-bottom: 0; font-size: 0.88rem;">
+                  Select any individual chapter or combine multiple chapters to test your core focus areas, high-weightage topics, or customized combinations.
+                </p>
+              </div>
+              <!-- Quick Selection Presets -->
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectAllChapters(true)">Select All</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part I')">Part I Only</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectSectionChapters('Part II')">Part II Only</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.selectHighWeightageChapters()">High Weightage (≥14M)</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="app.selectAllChapters(false)">Clear</button>
+              </div>
             </div>
-            <span class="badge primary">Very High Yield</span>
+
+            <!-- Dynamic Chapter Selection Grid -->
+            <div id="chapter-select-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; max-height: 380px; overflow-y: auto; padding-right: 0.25rem;">
+              <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">
+                Loading chapters for testing...
+              </div>
+            </div>
+
+            <!-- Test Mode & Launch Control Bar -->
+            <div style="background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+                <div>
+                  <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.25rem;">Selected Coverage</div>
+                  <div id="chapter-selection-count-label" style="font-weight: 600; color: var(--text-main); font-size: 0.92rem;">
+                    0 Chapters Selected (0 MCQs)
+                  </div>
+                </div>
+                <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
+                <div>
+                  <label for="custom-test-count" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 0.25rem;">Questions Count</label>
+                  <select id="custom-test-count" class="form-input" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--bg-surface);">
+                    <option value="10" selected>10 Questions (Sprint)</option>
+                    <option value="20">20 Questions</option>
+                    <option value="35">35 Questions</option>
+                    <option value="50">50 Questions</option>
+                    <option value="0">All Available MCQs</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="app.launchCustomChapterMock()" id="btn-custom-mock" title="Launch exam simulation with timer and final score evaluation">
+                  Timed CBT Mock
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="app.launchCustomChapterDrill()" id="btn-custom-drill" title="Launch practice session with immediate rationale and mandatory answer testing">
+                  Interactive Drill (Mandatory Testing) →
+                </button>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('icai')">
-            <div>
-              <div class="practice-mode-icon">🏛</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">ICAI BoS & TYK</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Official ICAI study material, Test Your Knowledge questions, and Case Study booklet.
-              </p>
-            </div>
-            <span class="badge">Official Module</span>
-          </div>
+        <!-- =========================================================================
+             SUBTAB 3: TARGETED PRACTICE DRILLS & 100M MOCK
+             ========================================================================= -->
+        <div id="testing-view-presets" class="testing-subtab-pane" style="display: none;">
+          <h4 style="margin-bottom: 1rem; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+            Targeted Practice Drills (10 Exam Modes)
+          </h4>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('student_recall')">
-            <div>
-              <div class="practice-mode-icon">●</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Student Exam Recalls</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Actual questions reported by students from TCS iON test center appointments.
-              </p>
+          <div class="grid-3" style="margin-bottom: 2rem;">
+            <div class="practice-mode-card" onclick="app.startPracticeSession('important')">
+              <div>
+                <div class="practice-mode-icon">★</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">High-Priority Topics</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Questions exclusively from topics scoring 85–100 on the exam intelligence model.
+                </p>
+              </div>
+              <span class="badge primary">Very High Yield</span>
             </div>
-            <span class="badge warning">Center Recalls</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('faculty_picked')">
-            <div>
-              <div class="practice-mode-icon">◆</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Faculty Recommended</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Curated problems highlighted by CA Harsh Gupta & CA Sankalp Kanstiya.
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('icai')">
+              <div>
+                <div class="practice-mode-icon">🏛</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">ICAI BoS & TYK</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Official ICAI study material, Test Your Knowledge questions, and Case Study booklet.
+                </p>
+              </div>
+              <span class="badge">Official Module</span>
             </div>
-            <span class="badge">Faculty Picks</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.openChapterPracticeModal()">
-            <div>
-              <div class="practice-mode-icon">§</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Chapter-Wise Drill</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Drill into any individual chapter (Directors, Board Meetings, FEMA, Throughput, TP).
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('student_recall')">
+              <div>
+                <div class="practice-mode-icon">●</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Student Exam Recalls</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Actual questions reported by students from TCS iON test center appointments.
+                </p>
+              </div>
+              <span class="badge warning">Center Recalls</span>
             </div>
-            <span class="badge">Selectable</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('mixed')">
-            <div>
-              <div class="practice-mode-icon">⚄</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Mixed Syllabus Drill</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Random questions across all chapters to test rapid cross-syllabus agility.
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('faculty_picked')">
+              <div>
+                <div class="practice-mode-icon">◆</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Faculty Recommended</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Curated problems highlighted by CA Harsh Gupta & CA Sankalp Kanstiya.
+                </p>
+              </div>
+              <span class="badge">Faculty Picks</span>
             </div>
-            <span class="badge">Comprehensive</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('weak_area')">
-            <div>
-              <div class="practice-mode-icon">▲</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Weak Area Practice</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Focuses automatically on chapters where you previously made errors.
-              </p>
+            <div class="practice-mode-card" onclick="app.openChapterPracticeModal()">
+              <div>
+                <div class="practice-mode-icon">§</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Chapter-Wise Drill</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Drill into any individual chapter (Directors, Board Meetings, FEMA, Throughput, TP).
+                </p>
+              </div>
+              <span class="badge">Selectable</span>
             </div>
-            <span class="badge danger">Mistakes Target</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('mixed', 10)">
-            <div>
-              <div class="practice-mode-icon">⏱</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">10-Question Sprint</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Fast, concise 10-question sprint for quick review between study sessions.
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('mixed')">
+              <div>
+                <div class="practice-mode-icon">⚄</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Mixed Syllabus Drill</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Random questions across all chapters to test rapid cross-syllabus agility.
+                </p>
+              </div>
+              <span class="badge">Comprehensive</span>
             </div>
-            <span class="badge">10 Questions</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('case_scenarios')">
-            <div>
-              <div class="practice-mode-icon">▤</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Integrated Case Scenarios</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Multi-part case scenarios testing practical application of legal and costing frameworks.
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('weak_area')">
+              <div>
+                <div class="practice-mode-icon">▲</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Weak Area Practice</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Focuses automatically on chapters where you previously made errors.
+                </p>
+              </div>
+              <span class="badge danger">Mistakes Target</span>
             </div>
-            <span class="badge">Case Scenarios</span>
-          </div>
 
-          <div class="practice-mode-card" onclick="app.startPracticeSession('adaptive')">
-            <div>
-              <div class="practice-mode-icon">◈</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Adaptive Practice</h4>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Smart selection weighting previously unattempted and failed questions.
-              </p>
+            <div class="practice-mode-card" onclick="app.startPracticeSession('mixed', 10)">
+              <div>
+                <div class="practice-mode-icon">⏱</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">10-Question Sprint</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Fast, concise 10-question sprint for quick review between study sessions.
+                </p>
+              </div>
+              <span class="badge">10 Questions</span>
             </div>
-            <span class="badge primary">Adaptive</span>
+
+            <div class="practice-mode-card" onclick="app.startPracticeSession('case_scenarios')">
+              <div>
+                <div class="practice-mode-icon">▤</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Integrated Case Scenarios</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Multi-part case scenarios testing practical application of legal and costing frameworks.
+                </p>
+              </div>
+              <span class="badge">Case Scenarios</span>
+            </div>
+
+            <div class="practice-mode-card" onclick="app.startPracticeSession('adaptive')">
+              <div>
+                <div class="practice-mode-icon">◈</div>
+                <h4 style="font-weight: 600; margin-bottom: 0.35rem;">Adaptive Practice</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Smart selection weighting previously unattempted and failed questions.
+                </p>
+              </div>
+              <span class="badge primary">Adaptive</span>
+            </div>
           </div>
         </div>
       </div>

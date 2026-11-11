@@ -225,8 +225,114 @@ def init_db():
     )
     """)
 
+    # 10. Question Progress & Bank Coverage Tracking
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS question_progress (
+        mcq_id INTEGER PRIMARY KEY,
+        set_name TEXT NOT NULL,
+        chapter_code TEXT,
+        attempt_count INTEGER DEFAULT 0,
+        correct_count INTEGER DEFAULT 0,
+        incorrect_count INTEGER DEFAULT 0,
+        last_result TEXT,
+        last_attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (mcq_id) REFERENCES mcqs (id) ON DELETE CASCADE
+    )
+    """)
+
+    # Backfill or synchronize question_progress safely from attempts and mistakes
+    _sync_question_progress(conn)
+
     conn.commit()
     conn.close()
+
+def _sync_question_progress(conn):
+    """Safely backfill question_progress from historical attempts and mistakes_book"""
+    cursor = conn.cursor()
+    cursor.execute("SELECT count(*) FROM question_progress")
+    count = cursor.fetchone()[0]
+    if count > 0:
+        return
+
+    progress = {}
+    try:
+        cursor.execute("SELECT id, set_name, attempted_at, responses_json FROM attempts ORDER BY id ASC")
+        for att in cursor.fetchall():
+            resp_str = att['responses_json']
+            if not resp_str:
+                continue
+            try:
+                resps = json.loads(resp_str)
+                for r in resps:
+                    q_id = r.get('id')
+                    if not q_id:
+                        continue
+                    if r.get('is_attempted'):
+                        if q_id not in progress:
+                            progress[q_id] = {
+                                'mcq_id': q_id,
+                                'set_name': att['set_name'],
+                                'chapter_code': r.get('chapter_code', ''),
+                                'attempt_count': 0,
+                                'correct_count': 0,
+                                'incorrect_count': 0,
+                                'last_result': '',
+                                'last_attempted_at': att['attempted_at']
+                            }
+                        p = progress[q_id]
+                        p['attempt_count'] += 1
+                        if r.get('is_correct'):
+                            p['correct_count'] += 1
+                            p['last_result'] = 'correct'
+                        else:
+                            p['incorrect_count'] += 1
+                            p['last_result'] = 'incorrect'
+                        p['last_attempted_at'] = att['attempted_at']
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("SELECT mcq_id, set_name, chapter_code, incorrect_count, last_attempted_at, revision_status FROM mistakes_book")
+        for mb in cursor.fetchall():
+            m_id = mb['mcq_id']
+            rev_status = mb['revision_status']
+            inc_cnt = mb['incorrect_count']
+            if m_id not in progress:
+                progress[m_id] = {
+                    'mcq_id': m_id,
+                    'set_name': mb['set_name'],
+                    'chapter_code': mb['chapter_code'],
+                    'attempt_count': inc_cnt,
+                    'correct_count': 1 if rev_status == 'Mastered' else 0,
+                    'incorrect_count': inc_cnt,
+                    'last_result': 'correct' if rev_status == 'Mastered' else 'incorrect',
+                    'last_attempted_at': mb['last_attempted_at']
+                }
+            else:
+                p = progress[m_id]
+                if inc_cnt > p['incorrect_count']:
+                    p['incorrect_count'] = inc_cnt
+                if p['attempt_count'] < (p['correct_count'] + p['incorrect_count']):
+                    p['attempt_count'] = p['correct_count'] + p['incorrect_count']
+                if rev_status == 'Mastered':
+                    p['last_result'] = 'correct'
+                    if p['correct_count'] == 0:
+                        p['correct_count'] = 1
+                        p['attempt_count'] += 1
+    except Exception:
+        pass
+
+    for q_id, p in progress.items():
+        cursor.execute("SELECT set_name, chapter_code FROM mcqs WHERE id = ?", (q_id,))
+        q_row = cursor.fetchone()
+        if q_row:
+            cursor.execute("""
+            INSERT OR REPLACE INTO question_progress 
+            (mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (q_id, q_row['set_name'], q_row['chapter_code'], p['attempt_count'], p['correct_count'], p['incorrect_count'], p['last_result'], p['last_attempted_at']))
 
 # =========================================================================
 # CHAPTERS & TOPICS INTELLIGENCE CRUD
@@ -798,8 +904,10 @@ def save_attempt(data):
             continue
         if resp.get('is_attempted') and not resp.get('is_correct'):
             record_mistake(q_id, resp.get('selected_option'))
+            record_question_progress(q_id, False)
         elif resp.get('is_correct'):
             record_correct_attempt(q_id)
+            record_question_progress(q_id, True)
 
     return {
         "id": attempt_id,
@@ -917,9 +1025,182 @@ def get_topic_stats(set_name='A'):
         "revision_percentage": round((revised / total_topics * 100), 1) if total_topics > 0 else 0.0
     }
 
-def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=10):
+def record_question_progress(mcq_id, is_correct):
+    """Update question attempt metrics upon practice drill or mock test attempt"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT set_name, chapter_code FROM mcqs WHERE id = ?", (mcq_id,))
+    q_row = cursor.fetchone()
+    if not q_row:
+        conn.close()
+        return
+
+    set_name = q_row['set_name']
+    chapter_code = q_row['chapter_code']
+    last_res = 'correct' if is_correct else 'incorrect'
+    inc_inc = 0 if is_correct else 1
+    cor_inc = 1 if is_correct else 0
+
+    cursor.execute("""
+    INSERT INTO question_progress (mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
+    VALUES (?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(mcq_id) DO UPDATE SET
+        attempt_count = attempt_count + 1,
+        correct_count = correct_count + ?,
+        incorrect_count = incorrect_count + ?,
+        last_result = excluded.last_result,
+        last_attempted_at = CURRENT_TIMESTAMP
+    """, (mcq_id, set_name, chapter_code, cor_inc, inc_inc, last_res, cor_inc, inc_inc))
+
+    conn.commit()
+    conn.close()
+
+def get_bank_coverage(set_name='A'):
     """
-    Supports 10 Exam Practice Modes:
+    Returns high-yield coverage metrics:
+    - total_mcqs: Total size of question bank
+    - attempted: Attempted at least once
+    - never_attempted: Untouched / unseen questions
+    - wrong_many_times: Questions with repeated errors or last answered incorrectly
+    - correct_many_times: Questions consistently answered correctly or mastered
+    - coverage_pct: % of question bank covered
+    - chapters: Chapter-wise breakdown
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    set_name = set_name.upper()
+
+    cursor.execute("SELECT COUNT(*) FROM mcqs WHERE set_name = ?", (set_name,))
+    total_mcqs = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM mcqs m
+        JOIN question_progress qp ON m.id = qp.mcq_id
+        WHERE m.set_name = ? AND qp.attempt_count > 0
+    """, (set_name,))
+    attempted_count = cursor.fetchone()[0]
+    never_attempted_count = max(0, total_mcqs - attempted_count)
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM mcqs m
+        JOIN question_progress qp ON m.id = qp.mcq_id
+        WHERE m.set_name = ? AND qp.attempt_count > 0 
+          AND (qp.incorrect_count >= 1 AND (qp.last_result = 'incorrect' OR qp.incorrect_count > qp.correct_count))
+    """, (set_name,))
+    wrong_many_times_count = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM mcqs m
+        JOIN question_progress qp ON m.id = qp.mcq_id
+        WHERE m.set_name = ? AND qp.attempt_count > 0
+          AND (qp.correct_count >= 1 AND (qp.last_result = 'correct' OR qp.correct_count >= qp.incorrect_count))
+    """, (set_name,))
+    correct_many_times_count = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT 
+            c.code, 
+            c.name,
+            c.section_group,
+            COUNT(m.id) as total_mcqs,
+            COUNT(CASE WHEN qp.attempt_count > 0 THEN 1 END) as attempted,
+            COUNT(CASE WHEN qp.attempt_count IS NULL OR qp.attempt_count = 0 THEN 1 END) as never_attempted,
+            COUNT(CASE WHEN qp.attempt_count > 0 AND (qp.incorrect_count >= 1 AND (qp.last_result = 'incorrect' OR qp.incorrect_count > qp.correct_count)) THEN 1 END) as wrong_many_times,
+            COUNT(CASE WHEN qp.attempt_count > 0 AND (qp.correct_count >= 1 AND (qp.last_result = 'correct' OR qp.correct_count >= qp.incorrect_count)) THEN 1 END) as correct_many_times
+        FROM chapters c
+        LEFT JOIN mcqs m ON c.code = m.chapter_code AND c.set_name = m.set_name
+        LEFT JOIN question_progress qp ON m.id = qp.mcq_id
+        WHERE c.set_name = ?
+        GROUP BY c.id
+        ORDER BY c.order_seq ASC
+    """, (set_name,))
+    chapters_breakdown = [dict(r) for r in cursor.fetchall()]
+
+    coverage_pct = round((attempted_count / total_mcqs * 100), 1) if total_mcqs > 0 else 0.0
+
+    conn.close()
+    return {
+        "set_name": set_name,
+        "total_mcqs": total_mcqs,
+        "attempted": attempted_count,
+        "never_attempted": never_attempted_count,
+        "wrong_many_times": wrong_many_times_count,
+        "correct_many_times": correct_many_times_count,
+        "coverage_pct": coverage_pct,
+        "chapters": chapters_breakdown
+    }
+
+def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, limit=None, random_order=True):
+    """
+    Fetch questions filtered by coverage cohort:
+    - never_attempted: Questions not yet attempted (attempt_count = 0 or NULL)
+    - wrong_many_times: Questions with repeated errors or last answered incorrectly
+    - correct_many_times: Questions answered correctly / mastered
+    - attempted: All attempted questions
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    set_name = set_name.upper()
+
+    query = """
+        SELECT m.*,
+               CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked,
+               COALESCE(qp.attempt_count, 0) as user_attempt_count,
+               COALESCE(qp.correct_count, 0) as user_correct_count,
+               COALESCE(qp.incorrect_count, 0) as user_incorrect_count,
+               COALESCE(qp.last_result, '') as user_last_result,
+               CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
+               mb.revision_status as mistake_status
+        FROM mcqs m
+        LEFT JOIN question_progress qp ON m.id = qp.mcq_id
+        LEFT JOIN bookmarks b ON m.id = b.mcq_id
+        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+        WHERE m.set_name = ?
+    """
+    params = [set_name]
+
+    if cohort == 'never_attempted':
+        query += " AND (qp.attempt_count IS NULL OR qp.attempt_count = 0)"
+    elif cohort == 'wrong_many_times':
+        query += " AND qp.attempt_count > 0 AND (qp.incorrect_count >= 1 AND (qp.last_result = 'incorrect' OR qp.incorrect_count > qp.correct_count))"
+    elif cohort == 'correct_many_times':
+        query += " AND qp.attempt_count > 0 AND (qp.correct_count >= 1 AND (qp.last_result = 'correct' OR qp.correct_count >= qp.incorrect_count))"
+    elif cohort == 'attempted':
+        query += " AND qp.attempt_count > 0"
+
+    if chapter_codes and chapter_codes != 'all':
+        if isinstance(chapter_codes, (list, tuple)):
+            codes = [c.strip() for c in chapter_codes if c.strip() and c.strip().lower() != 'all']
+        elif isinstance(chapter_codes, str) and ',' in chapter_codes:
+            codes = [c.strip() for c in chapter_codes.split(',') if c.strip() and c.strip().lower() != 'all']
+        else:
+            codes = [chapter_codes.strip()] if str(chapter_codes).strip().lower() != 'all' else []
+
+        if len(codes) == 1:
+            query += " AND m.chapter_code = ?"
+            params.append(codes[0])
+        elif len(codes) > 1:
+            placeholders = ','.join(['?'] * len(codes))
+            query += f" AND m.chapter_code IN ({placeholders})"
+            params.extend(codes)
+
+    if random_order:
+        query += " ORDER BY RANDOM()"
+    else:
+        query += " ORDER BY m.id ASC"
+
+    if limit and int(limit) > 0:
+        query += f" LIMIT {int(limit)}"
+
+    cursor.execute(query, params)
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=10, cohort=None):
+    """
+    Supports 10 Exam Practice Modes + Cohort Coverage Modes:
+    - cohort in ('never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted')
     1. important: Questions from top high-priority topics
     2. icai: Official ICAI BoS Module, TYK, and Case Booklet
     3. student_recall: Offline SPOM Exam Recalls
@@ -931,6 +1212,10 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
     9. case_scenarios: Case study questions
     10. adaptive: Blended review based on difficulty & mistake history
     """
+    active_cohort = cohort or (mode if mode in ('never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted') else None)
+    if active_cohort:
+        return get_cohort_mcqs(set_name=set_name, cohort=active_cohort, chapter_codes=chapter_code, limit=count, random_order=True)
+
     conn = get_db_connection()
     cursor = conn.cursor()
     set_name = set_name.upper()

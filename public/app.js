@@ -49,6 +49,14 @@ const app = {
     startTime: null
   },
 
+  // Question Bank Coverage & Mastery Hub State
+  coverageState: {
+    data: null,
+    selectedCohort: 'never_attempted', // 'never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted'
+    selectedChapter: 'all',
+    activeSubtab: 'coverage'
+  },
+
   // CBT Mock Simulator State (TCS iON Emulation)
   mockExam: {
     active: false,
@@ -77,6 +85,7 @@ const app = {
     this.initKeyboardShortcuts();
     await this.switchSet('A', false);
     await this.renderChapterSelectionGrid();
+    await this.fetchQuestionBankCoverage();
     await this.fetchStats();
     await this.fetchBookmarks();
     await this.loadResearchLogs();
@@ -182,6 +191,7 @@ const app = {
     this.selectedChapters = [];
     await this.fetchChapters(this.currentSet);
     await this.fetchIntelligenceDashboard();
+    await this.fetchQuestionBankCoverage();
     this.renderHomeChapters();
     this.renderChapterSelectionGrid();
     this.updateChapterDropdowns();
@@ -193,6 +203,8 @@ const app = {
       this.filterMistakes(this.currentMistakeFilter);
     } else if (this.activeTab === 'studio') {
       this.loadQBQuestions();
+    } else if (this.activeTab === 'practice') {
+      this.renderCoverageHub();
     }
   },
 
@@ -231,6 +243,7 @@ const app = {
     } else if (tabName === 'studio') {
       this.loadQBQuestions();
     } else if (tabName === 'practice') {
+      this.fetchQuestionBankCoverage();
       this.renderChapterSelectionGrid();
     }
 
@@ -769,6 +782,288 @@ const app = {
     }
   },
 
+  // =========================================================================
+  // Question Bank Coverage & Mastery Hub
+  // =========================================================================
+
+  switchTestingSubtab(subtab) {
+    this.coverageState.activeSubtab = subtab;
+    const subtabs = ['coverage', 'chapters', 'presets'];
+    subtabs.forEach(st => {
+      const btn = document.getElementById(`btn-subtab-${st}`);
+      if (btn) btn.classList.toggle('active', st === subtab);
+
+      const pane = document.getElementById(`testing-view-${st}`);
+      if (pane) pane.style.display = (st === subtab) ? 'block' : 'none';
+    });
+
+    if (subtab === 'coverage') {
+      this.fetchQuestionBankCoverage();
+    } else if (subtab === 'chapters') {
+      this.renderChapterSelectionGrid();
+    }
+  },
+
+  async fetchQuestionBankCoverage() {
+    try {
+      const res = await fetch(`/api/question-bank-coverage?set=${this.currentSet}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        this.coverageState.data = data.data;
+        this.renderCoverageHub();
+      }
+    } catch (err) {
+      console.error("Error fetching question bank coverage:", err);
+    }
+  },
+
+  renderCoverageHub() {
+    const d = this.coverageState.data;
+    if (!d) return;
+
+    const total = d.total_mcqs || 0;
+    const attempted = d.attempted || 0;
+    const never = d.never_attempted || 0;
+    const wrong = d.wrong_many_times || 0;
+    const correct = d.correct_many_times || 0;
+    const covPct = d.coverage_pct || 0;
+
+    // Header Badges & Headline Stats
+    const setBadge = document.getElementById('coverage-set-badge');
+    if (setBadge) {
+      setBadge.textContent = this.currentSet === 'A' ? 'Set A · Corporate & Economic Laws' : 'Set B · Strategic Cost & Performance Mgmt';
+    }
+
+    const totalBankEl = document.getElementById('coverage-total-bank');
+    if (totalBankEl) totalBankEl.textContent = `${total} High-Yield MCQs`;
+
+    const pctHeadEl = document.getElementById('coverage-pct-headline');
+    if (pctHeadEl) pctHeadEl.textContent = `${covPct}%`;
+
+    const attStatEl = document.getElementById('coverage-attempted-stat');
+    if (attStatEl) attStatEl.textContent = attempted;
+
+    const totStatEl = document.getElementById('coverage-total-stat');
+    if (totStatEl) totStatEl.textContent = total;
+
+    // Progress Bar Segments
+    const masteredPct = total > 0 ? ((correct / total) * 100) : 0;
+    const wrongPct = total > 0 ? ((wrong / total) * 100) : 0;
+    const unseenPct = total > 0 ? ((never / total) * 100) : 0;
+
+    const barMastered = document.getElementById('cov-bar-mastered');
+    if (barMastered) barMastered.style.width = `${masteredPct}%`;
+
+    const barWrong = document.getElementById('cov-bar-wrong');
+    if (barWrong) barWrong.style.width = `${wrongPct}%`;
+
+    const barUnseen = document.getElementById('cov-bar-unseen');
+    if (barUnseen) barUnseen.style.width = `${unseenPct}%`;
+
+    // Legend
+    const legMasteredCount = document.getElementById('leg-mastered-count');
+    if (legMasteredCount) legMasteredCount.textContent = correct;
+    const legMasteredPct = document.getElementById('leg-mastered-pct');
+    if (legMasteredPct) legMasteredPct.textContent = `${masteredPct.toFixed(1)}%`;
+
+    const legWrongCount = document.getElementById('leg-wrong-count');
+    if (legWrongCount) legWrongCount.textContent = wrong;
+    const legWrongPct = document.getElementById('leg-wrong-pct');
+    if (legWrongPct) legWrongPct.textContent = `${wrongPct.toFixed(1)}%`;
+
+    const legUnseenCount = document.getElementById('leg-unseen-count');
+    if (legUnseenCount) legUnseenCount.textContent = never;
+    const legUnseenPct = document.getElementById('leg-unseen-pct');
+    if (legUnseenPct) legUnseenPct.textContent = `${unseenPct.toFixed(1)}%`;
+
+    // 4 Cohort Cards Counts
+    const cntNever = document.getElementById('cohort-count-never_attempted');
+    if (cntNever) cntNever.textContent = never;
+    const pctNever = document.getElementById('cohort-pct-never_attempted');
+    if (pctNever) pctNever.textContent = `${unseenPct.toFixed(1)}%`;
+
+    const cntWrong = document.getElementById('cohort-count-wrong_many_times');
+    if (cntWrong) cntWrong.textContent = wrong;
+
+    const cntCorrect = document.getElementById('cohort-count-correct_many_times');
+    if (cntCorrect) cntCorrect.textContent = correct;
+
+    const cntAtt = document.getElementById('cohort-count-attempted');
+    if (cntAtt) cntAtt.textContent = attempted;
+    const pctAtt = document.getElementById('cohort-pct-attempted');
+    if (pctAtt) pctAtt.textContent = `${covPct}%`;
+
+    // Update selected cohort state and launch panel
+    this.selectCoverageCohort(this.coverageState.selectedCohort, false);
+
+    // Render Chapter Breakdown Grid
+    this.renderChapterCoverageList(d.chapters || []);
+  },
+
+  selectCoverageCohort(cohort, updateDropdown = true) {
+    this.coverageState.selectedCohort = cohort;
+
+    // Highlight the selected cohort card
+    const cohortKeys = ['never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted'];
+    cohortKeys.forEach(k => {
+      const card = document.getElementById(`card-cohort-${k}`);
+      if (card) card.classList.toggle('selected', k === cohort);
+    });
+
+    const d = this.coverageState.data;
+    if (!d) return;
+
+    let title = "Never Attempted (Unseen Questions)";
+    let subtitle = "Configure and launch a practice drill or timed mock on fresh, unseen questions to maximize bank coverage.";
+    let totalInCohort = d.never_attempted || 0;
+
+    if (cohort === 'wrong_many_times') {
+      title = "Wrong Many Times (Needs Practice / Repeat Traps)";
+      subtitle = "Drill into questions where you previously recorded errors or unresolved traps in My Mistakes Book.";
+      totalInCohort = d.wrong_many_times || 0;
+    } else if (cohort === 'correct_many_times') {
+      title = "Correct Many Times (Mastered & Verified Accuracy)";
+      subtitle = "Review questions you answered correctly to ensure long-term retention before exam day.";
+      totalInCohort = d.correct_many_times || 0;
+    } else if (cohort === 'attempted') {
+      title = "All Questions Attempted (Cumulative Tested Pool)";
+      subtitle = "Re-test the complete pool of questions you have encountered across all your CBT mocks and drills.";
+      totalInCohort = d.attempted || 0;
+    }
+
+    const titleEl = document.getElementById('active-cohort-title');
+    if (titleEl) titleEl.textContent = title;
+
+    const subEl = document.getElementById('active-cohort-subtitle');
+    if (subEl) subEl.textContent = subtitle;
+
+    const availBadge = document.getElementById('active-cohort-available-count');
+    if (availBadge) availBadge.textContent = `${totalInCohort} MCQs`;
+
+    // Populate Chapter Filter dropdown for this cohort
+    const chSelect = document.getElementById('cohort-chapter-select');
+    if (chSelect && d.chapters) {
+      const prevVal = this.coverageState.selectedChapter;
+      chSelect.innerHTML = `<option value="all">All Chapters in Cohort (${totalInCohort} MCQs)</option>`;
+
+      (d.chapters || []).forEach(ch => {
+        let chCount = 0;
+        if (cohort === 'never_attempted') chCount = ch.never_attempted || 0;
+        else if (cohort === 'wrong_many_times') chCount = ch.wrong_many_times || 0;
+        else if (cohort === 'correct_many_times') chCount = ch.correct_many_times || 0;
+        else if (cohort === 'attempted') chCount = ch.attempted || 0;
+
+        if (chCount > 0) {
+          const opt = document.createElement('option');
+          opt.value = ch.code;
+          opt.textContent = `${ch.code}: ${ch.name} (${chCount} MCQs)`;
+          chSelect.appendChild(opt);
+        }
+      });
+
+      if (prevVal && chSelect.querySelector(`option[value="${prevVal}"]`)) {
+        chSelect.value = prevVal;
+      } else {
+        chSelect.value = 'all';
+        this.coverageState.selectedChapter = 'all';
+      }
+    }
+  },
+
+  onCohortChapterChange() {
+    const chSelect = document.getElementById('cohort-chapter-select');
+    if (chSelect) {
+      this.coverageState.selectedChapter = chSelect.value;
+    }
+  },
+
+  renderChapterCoverageList(chapters) {
+    const listEl = document.getElementById('chapter-coverage-list');
+    if (!listEl) return;
+
+    if (!chapters || chapters.length === 0) {
+      listEl.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No chapter coverage data available.</div>`;
+      return;
+    }
+
+    let html = `
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--bg-elevated); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); border-bottom: 1px solid var(--border-subtle);">
+        <div>Chapter</div>
+        <div style="text-align: center;">Total</div>
+        <div style="text-align: center;">Never</div>
+        <div style="text-align: center;">Needs Work</div>
+        <div style="text-align: center;">Mastered</div>
+        <div style="text-align: right;">Coverage</div>
+      </div>
+    `;
+
+    chapters.forEach(ch => {
+      const tot = ch.total_mcqs || 0;
+      const att = ch.attempted || 0;
+      const nev = ch.never_attempted || 0;
+      const wrg = ch.wrong_many_times || 0;
+      const cor = ch.correct_many_times || 0;
+      const pct = tot > 0 ? Math.round((att / tot) * 100) : 0;
+
+      html += `
+        <div class="chapter-coverage-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr; gap: 0.5rem; align-items: center; padding: 0.75rem 1rem;">
+          <div>
+            <strong style="color: var(--text-main); font-size: 0.88rem;">${ch.code}</strong>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${ch.name}">${ch.name}</div>
+          </div>
+          <div style="text-align: center; font-weight: 600;">${tot}</div>
+          <div style="text-align: center; color: var(--text-muted);">${nev}</div>
+          <div style="text-align: center; color: var(--danger); font-weight: 600;">${wrg}</div>
+          <div style="text-align: center; color: var(--success); font-weight: 600;">${cor}</div>
+          <div style="text-align: right;">
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+              <span style="font-size: 0.78rem; font-weight: 600;">${pct}%</span>
+              <div style="width: 50px; height: 6px; background: var(--bg-subtle); border-radius: 999px; overflow: hidden;">
+                <div style="width: ${pct}%; height: 100%; background: ${pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--accent-gold)' : 'var(--danger)'};"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+  },
+
+  toggleChapterCoverageDetails() {
+    const container = document.getElementById('chapter-coverage-details-container');
+    const btn = document.getElementById('btn-toggle-coverage-details');
+    if (!container) return;
+
+    const isHidden = container.style.display === 'none';
+    container.style.display = isHidden ? 'block' : 'none';
+    if (btn) {
+      btn.textContent = isHidden ? 'Hide Detailed Chapter Grid ↑' : 'Show Detailed Chapter Grid ↓';
+    }
+  },
+
+  launchCohortDrill() {
+    const cohort = this.coverageState.selectedCohort || 'never_attempted';
+    const chSelect = document.getElementById('cohort-chapter-select');
+    const chapterCode = chSelect ? chSelect.value : 'all';
+
+    const countSelect = document.getElementById('cohort-count-select');
+    const count = countSelect ? parseInt(countSelect.value) : 10;
+
+    this.startPracticeSession('mixed', count, chapterCode, cohort);
+  },
+
+  launchCohortMock() {
+    const cohort = this.coverageState.selectedCohort || 'never_attempted';
+    const chSelect = document.getElementById('cohort-chapter-select');
+    const chapterCode = chSelect ? chSelect.value : 'all';
+
+    const countSelect = document.getElementById('cohort-count-select');
+    const count = countSelect ? parseInt(countSelect.value) : 20;
+
+    this.startMockTest(this.currentSet, 'custom_chapters', chapterCode, count, cohort);
+  },
+
   launchCustomChapterDrill() {
     if (!this.selectedChapters || this.selectedChapters.length === 0) {
       this.showToast("Please select at least one chapter from the Studio above to begin testing.", 'warning');
@@ -809,11 +1104,12 @@ const app = {
   // Intelligent Practice Engine (10 Targeted Modes)
   // =========================================================================
 
-  async startPracticeSession(mode, count = 10, chapterCode = null) {
+  async startPracticeSession(mode, count = 10, chapterCode = null, cohort = null) {
     try {
       this.practiceState.active = true;
       this.practiceState.mode = mode;
       this.practiceState.chapterCode = chapterCode;
+      this.practiceState.cohort = cohort;
       this.practiceState.count = count;
       this.practiceState.startTime = Date.now();
       this.practiceState.score = 0;
@@ -822,7 +1118,8 @@ const app = {
       this.showToast(`Loading practice questions...`, 'info');
 
       let url = `/api/practice/questions?set=${this.currentSet}&mode=${mode}&count=${count}&shuffle_options=true`;
-      if (chapterCode) url += `&chapters=${encodeURIComponent(chapterCode)}`;
+      if (chapterCode && chapterCode !== 'all') url += `&chapters=${encodeURIComponent(chapterCode)}`;
+      if (cohort) url += `&cohort=${encodeURIComponent(cohort)}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -842,7 +1139,18 @@ const app = {
 
       const modeBadge = document.getElementById('practice-mode-badge');
       if (modeBadge) {
-        const modeLabel = chapterCode ? `Chapter Drill: ${chapterCode.replace(/,/g, ', ')}` : mode.toUpperCase();
+        let modeLabel = mode.toUpperCase();
+        if (cohort) {
+          const cohortNames = {
+            never_attempted: 'Never Attempted (Unseen)',
+            wrong_many_times: 'Wrong / Needs Practice',
+            correct_many_times: 'Mastered / Consistent Correct',
+            attempted: 'All Attempted Questions'
+          };
+          modeLabel = `Cohort: ${cohortNames[cohort] || cohort}`;
+        } else if (chapterCode) {
+          modeLabel = `Chapter Drill: ${chapterCode.replace(/,/g, ', ')}`;
+        }
         modeBadge.textContent = `${modeLabel} · ${data.questions.length} Questions`;
       }
 
@@ -857,6 +1165,7 @@ const app = {
     this.practiceState.active = false;
     document.getElementById('practice-quiz-view').style.display = 'none';
     document.getElementById('practice-selector-view').style.display = 'block';
+    this.fetchQuestionBankCoverage();
   },
 
   renderPracticeQuestion() {
@@ -1346,13 +1655,14 @@ const app = {
     }
   },
 
-  async startMockTest(setName, mode = 'full_mock_50', chapters = null, count = 50) {
+  async startMockTest(setName, mode = 'full_mock_50', chapters = null, count = 50, cohort = null) {
     try {
       this.currentMockMode = mode;
       this.showToast(`Assembling exam for Set ${setName}...`, 'info');
 
       let url = `/api/mock-test?set=${setName}&mode=${mode}&shuffle_options=true`;
-      if (chapters) url += `&chapters=${encodeURIComponent(chapters)}&count=${count}`;
+      if (chapters && chapters !== 'all') url += `&chapters=${encodeURIComponent(chapters)}&count=${count}`;
+      if (cohort) url += `&cohort=${encodeURIComponent(cohort)}&count=${count}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -1756,6 +2066,7 @@ const app = {
         this.renderTestResult();
         this.showTab('result');
         this.fetchStats();
+        this.fetchQuestionBankCoverage();
       } else {
         this.showToast(data.error || "Submission failed", 'error');
       }

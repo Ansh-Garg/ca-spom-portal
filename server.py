@@ -20,7 +20,7 @@ import database
 import seed_data
 import seed_intelligence
 
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 
@@ -96,14 +96,49 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
             self.send_json({"success": True, "count": len(bookmarks), "data": bookmarks})
             return
 
+        # 4b. Question Bank Coverage & Cohort Metrics
+        elif path == "/api/question-bank-coverage":
+            set_name = query.get('set', ['A'])[0].upper()
+            cov = database.get_bank_coverage(set_name)
+            self.send_json({"success": True, "data": cov})
+            return
+
         # 5. Authentic 100 Marks Mock Generation (Section Weightage + Shuffling)
         elif path == "/api/mock-test":
             set_name = query.get('set', ['A'])[0].upper()
-            mode = query.get('mode', ['full_mock_50'])[0] # 'full_mock_50', 'full_mock_70', 'quick_blitz', 'custom_chapters'
+            mode = query.get('mode', ['full_mock_50'])[0] # 'full_mock_50', 'full_mock_70', 'quick_blitz', 'custom_chapters', 'cohort'
             shuffle_options = query.get('shuffle_options', ['true'])[0].lower() == 'true'
             chapters_arg = query.get('chapters', [None])[0] or query.get('chapter', [None])[0]
+            cohort_arg = query.get('cohort', [None])[0]
 
-            if chapters_arg:
+            if cohort_arg:
+                # Cohort specific mock test (Never Attempted, Wrong Many Times, Correct Many Times, Attempted)
+                pool = database.get_cohort_mcqs(set_name=set_name, cohort=cohort_arg, chapter_codes=chapters_arg, random_order=True)
+                if not pool:
+                    self.send_json({"success": False, "error": f"No questions found in cohort '{cohort_arg}' for Set {set_name}"}, status_code=404)
+                    return
+                req_count = int(query.get('count', [20])[0])
+                if req_count <= 0 or req_count >= len(pool):
+                    chosen = list(pool)
+                    random.shuffle(chosen)
+                else:
+                    chosen = random.sample(pool, req_count)
+
+                cohort_label_map = {
+                    'never_attempted': 'Never Attempted (Unseen)',
+                    'wrong_many_times': 'Wrong Many Times (Needs Practice)',
+                    'correct_many_times': 'Correct Many Times (Mastered)',
+                    'attempted': 'All Attempted Questions'
+                }
+                c_lbl = cohort_label_map.get(cohort_arg, cohort_arg.replace('_', ' ').title())
+                combined = []
+                for q in chosen:
+                    q_copy = dict(q)
+                    sec_g = q_copy.get('section_group', '')
+                    q_copy['section_title'] = sec_g if sec_g else f"Cohort Test · {c_lbl}"
+                    combined.append(q_copy)
+
+            elif chapters_arg:
                 # Custom single chapter or combination of chapters test
                 pool = database.get_mcqs(set_name=set_name, chapter_code=chapters_arg, random_order=True)
                 if not pool:
@@ -441,9 +476,10 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
             mode = query.get('mode', ['mixed'])[0]
             chapter_code = query.get('chapter', [None])[0] or query.get('chapters', [None])[0]
             count = int(query.get('count', [10])[0])
+            cohort = query.get('cohort', [None])[0]
             shuffle_options = query.get('shuffle_options', ['true'])[0].lower() == 'true'
 
-            questions = database.get_practice_questions(set_name, mode, chapter_code, count)
+            questions = database.get_practice_questions(set_name, mode, chapter_code, count, cohort=cohort)
             final_qs = []
             for idx, q in enumerate(questions):
                 opts = [
@@ -839,6 +875,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                                 orig_sel_key = db_k
                                 break
                         database.record_mistake(q_id, orig_sel_key)
+                    database.record_question_progress(q_id, is_correct)
                 self.send_json({"success": True})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)}, status_code=400)
