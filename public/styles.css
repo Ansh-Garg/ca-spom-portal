@@ -1922,3 +1922,43 @@ footer {
   border-bottom: none;
 }
 
+/* User Workspace Status Pill & Modal Enhancements */
+.user-workspace-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.8rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.user-workspace-pill:hover {
+  background: var(--bg-elevated);
+  border-color: var(--gold-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.user-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #28a745;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
+  display: inline-block;
+  animation: pulseDot 2.5s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(40, 167, 69, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+

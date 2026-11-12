@@ -228,7 +228,8 @@ def init_db():
     # 10. Question Progress & Bank Coverage Tracking
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS question_progress (
-        mcq_id INTEGER PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'default',
+        mcq_id INTEGER NOT NULL,
         set_name TEXT NOT NULL,
         chapter_code TEXT,
         attempt_count INTEGER DEFAULT 0,
@@ -236,9 +237,87 @@ def init_db():
         incorrect_count INTEGER DEFAULT 0,
         last_result TEXT,
         last_attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, mcq_id),
         FOREIGN KEY (mcq_id) REFERENCES mcqs (id) ON DELETE CASCADE
     )
     """)
+
+    # Multi-User Migration: Ensure user_id column and constraints exist on all user-scoped tables
+    cursor.execute("PRAGMA table_info(attempts)")
+    attempt_cols = {row['name'] for row in cursor.fetchall()}
+    if 'user_id' not in attempt_cols:
+        cursor.execute("ALTER TABLE attempts ADD COLUMN user_id TEXT DEFAULT 'default'")
+
+    cursor.execute("PRAGMA table_info(bookmarks)")
+    bm_cols = {row['name'] for row in cursor.fetchall()}
+    if 'user_id' not in bm_cols:
+        cursor.execute("""
+        CREATE TABLE bookmarks_v2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT DEFAULT 'default',
+            mcq_id INTEGER NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, mcq_id),
+            FOREIGN KEY (mcq_id) REFERENCES mcqs (id) ON DELETE CASCADE
+        )
+        """)
+        cursor.execute("INSERT OR IGNORE INTO bookmarks_v2 (id, user_id, mcq_id, notes, created_at) SELECT id, 'default', mcq_id, notes, created_at FROM bookmarks")
+        cursor.execute("DROP TABLE bookmarks")
+        cursor.execute("ALTER TABLE bookmarks_v2 RENAME TO bookmarks")
+
+    cursor.execute("PRAGMA table_info(mistakes_book)")
+    mb_cols = {row['name'] for row in cursor.fetchall()}
+    if 'user_id' not in mb_cols:
+        cursor.execute("""
+        CREATE TABLE mistakes_book_v2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT DEFAULT 'default',
+            mcq_id INTEGER NOT NULL,
+            set_name TEXT NOT NULL,
+            chapter_code TEXT NOT NULL,
+            incorrect_count INTEGER DEFAULT 1,
+            last_selected_option TEXT,
+            last_attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            revision_status TEXT DEFAULT 'Unrevised',
+            notes TEXT DEFAULT '',
+            UNIQUE(user_id, mcq_id),
+            FOREIGN KEY (mcq_id) REFERENCES mcqs (id) ON DELETE CASCADE
+        )
+        """)
+        cursor.execute("""
+        INSERT OR IGNORE INTO mistakes_book_v2 
+        (id, user_id, mcq_id, set_name, chapter_code, incorrect_count, last_selected_option, last_attempted_at, revision_status, notes)
+        SELECT id, 'default', mcq_id, set_name, chapter_code, incorrect_count, last_selected_option, last_attempted_at, revision_status, notes FROM mistakes_book
+        """)
+        cursor.execute("DROP TABLE mistakes_book")
+        cursor.execute("ALTER TABLE mistakes_book_v2 RENAME TO mistakes_book")
+
+    cursor.execute("PRAGMA table_info(question_progress)")
+    qp_cols = {row['name'] for row in cursor.fetchall()}
+    if 'user_id' not in qp_cols:
+        cursor.execute("""
+        CREATE TABLE question_progress_v2 (
+            user_id TEXT NOT NULL DEFAULT 'default',
+            mcq_id INTEGER NOT NULL,
+            set_name TEXT NOT NULL,
+            chapter_code TEXT,
+            attempt_count INTEGER DEFAULT 0,
+            correct_count INTEGER DEFAULT 0,
+            incorrect_count INTEGER DEFAULT 0,
+            last_result TEXT,
+            last_attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, mcq_id),
+            FOREIGN KEY (mcq_id) REFERENCES mcqs (id) ON DELETE CASCADE
+        )
+        """)
+        cursor.execute("""
+        INSERT OR IGNORE INTO question_progress_v2 
+        (user_id, mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
+        SELECT 'default', mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at FROM question_progress
+        """)
+        cursor.execute("DROP TABLE question_progress")
+        cursor.execute("ALTER TABLE question_progress_v2 RENAME TO question_progress")
 
     # Backfill or synchronize question_progress safely from attempts and mistakes
     _sync_question_progress(conn)
@@ -330,8 +409,8 @@ def _sync_question_progress(conn):
         if q_row:
             cursor.execute("""
             INSERT OR REPLACE INTO question_progress 
-            (mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
+            VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?)
             """, (q_id, q_row['set_name'], q_row['chapter_code'], p['attempt_count'], p['correct_count'], p['incorrect_count'], p['last_result'], p['last_attempted_at']))
 
 # =========================================================================
@@ -470,7 +549,7 @@ def mark_topic_revised(topic_id, is_revised=1):
     conn.commit()
     conn.close()
 
-def get_study_today_recommendations(set_name='A', limit=5):
+def get_study_today_recommendations(set_name='A', limit=5, user_id='default'):
     """
     Intelligent Study Recommendation Algorithm:
     Selects top unrevised topics weighted by priority score,
@@ -478,6 +557,7 @@ def get_study_today_recommendations(set_name='A', limit=5):
     """
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
 
     # 1. Unrevised High & Very High Priority Topics
     cursor.execute("""
@@ -494,11 +574,11 @@ def get_study_today_recommendations(set_name='A', limit=5):
     cursor.execute("""
     SELECT chapter_code, COUNT(*) as mistake_count
     FROM mistakes_book
-    WHERE set_name = ? AND revision_status != 'Mastered'
+    WHERE set_name = ? AND revision_status != 'Mastered' AND user_id = ?
     GROUP BY chapter_code
     ORDER BY mistake_count DESC
     LIMIT 3
-    """, (set_name.upper(),))
+    """, (set_name.upper(), user_id))
     weak_chapters = [dict(r) for r in cursor.fetchall()]
 
     conn.close()
@@ -512,20 +592,21 @@ def get_study_today_recommendations(set_name='A', limit=5):
 # =========================================================================
 
 def get_mcqs(set_name=None, chapter_code=None, source_tag=None, section_group=None, 
-             difficulty=None, verification_status=None, limit=None, random_order=False):
+             difficulty=None, verification_status=None, limit=None, random_order=False, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     query = """
         SELECT m.*, 
                CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked,
                CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
                mb.revision_status as mistake_status
         FROM mcqs m
-        LEFT JOIN bookmarks b ON m.id = b.mcq_id
-        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+        LEFT JOIN bookmarks b ON m.id = b.mcq_id AND b.user_id = ?
+        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id AND mb.user_id = ?
         WHERE 1=1
     """
-    params = []
+    params = [user_id, user_id]
     
     if set_name:
         query += " AND m.set_name = ?"
@@ -575,19 +656,20 @@ def get_mcqs(set_name=None, chapter_code=None, source_tag=None, section_group=No
     conn.close()
     return rows
 
-def get_mcq_by_id(mcq_id):
+def get_mcq_by_id(mcq_id, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     cursor.execute("""
         SELECT m.*, 
                CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked,
                CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
                mb.revision_status as mistake_status
         FROM mcqs m
-        LEFT JOIN bookmarks b ON m.id = b.mcq_id
-        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+        LEFT JOIN bookmarks b ON m.id = b.mcq_id AND b.user_id = ?
+        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id AND mb.user_id = ?
         WHERE m.id = ?
-    """, (mcq_id,))
+    """, (user_id, user_id, mcq_id))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -665,38 +747,42 @@ def delete_mcq(mcq_id):
 # BOOKMARKS & MY MISTAKES BOOK
 # =========================================================================
 
-def toggle_bookmark(mcq_id, notes=""):
+def toggle_bookmark(mcq_id, notes="", user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM bookmarks WHERE mcq_id = ?", (mcq_id,))
+    user_id = (user_id or 'default').strip()
+    cursor.execute("SELECT id FROM bookmarks WHERE mcq_id = ? AND user_id = ?", (mcq_id, user_id))
     existing = cursor.fetchone()
     if existing:
-        cursor.execute("DELETE FROM bookmarks WHERE mcq_id = ?", (mcq_id,))
+        cursor.execute("DELETE FROM bookmarks WHERE mcq_id = ? AND user_id = ?", (mcq_id, user_id))
         is_bookmarked = False
     else:
-        cursor.execute("INSERT INTO bookmarks (mcq_id, notes) VALUES (?, ?)", (mcq_id, notes))
+        cursor.execute("INSERT INTO bookmarks (user_id, mcq_id, notes) VALUES (?, ?, ?)", (user_id, mcq_id, notes))
         is_bookmarked = True
     conn.commit()
     conn.close()
     return is_bookmarked
 
-def get_bookmarked_mcqs():
+def get_bookmarked_mcqs(user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     cursor.execute("""
         SELECT m.*, 1 as is_bookmarked, b.created_at as bookmarked_at, b.notes as bookmark_notes
         FROM bookmarks b
         JOIN mcqs m ON b.mcq_id = m.id
+        WHERE b.user_id = ?
         ORDER BY b.created_at DESC
-    """)
+    """, (user_id,))
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
 
-def record_mistake(mcq_id, selected_option):
+def record_mistake(mcq_id, selected_option, user_id='default'):
     """Called automatically upon test evaluation when answer is wrong"""
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
 
     # Get question info
     cursor.execute("SELECT set_name, chapter_code FROM mcqs WHERE id = ?", (mcq_id,))
@@ -709,33 +795,35 @@ def record_mistake(mcq_id, selected_option):
     chapter_code = row['chapter_code']
 
     cursor.execute("""
-    INSERT INTO mistakes_book (mcq_id, set_name, chapter_code, incorrect_count, last_selected_option, last_attempted_at, revision_status)
-    VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, 'Unrevised')
-    ON CONFLICT(mcq_id) DO UPDATE SET
+    INSERT INTO mistakes_book (user_id, mcq_id, set_name, chapter_code, incorrect_count, last_selected_option, last_attempted_at, revision_status)
+    VALUES (?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP, 'Unrevised')
+    ON CONFLICT(user_id, mcq_id) DO UPDATE SET
         incorrect_count = incorrect_count + 1,
         last_selected_option = excluded.last_selected_option,
         last_attempted_at = CURRENT_TIMESTAMP,
         revision_status = CASE WHEN revision_status = 'Mastered' THEN 'Reviewed' ELSE revision_status END
-    """, (mcq_id, set_name, chapter_code, selected_option))
+    """, (user_id, mcq_id, set_name, chapter_code, selected_option))
 
     conn.commit()
     conn.close()
 
-def record_correct_attempt(mcq_id):
+def record_correct_attempt(mcq_id, user_id='default'):
     """If user previously failed and now gets it right, upgrade status"""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT revision_status FROM mistakes_book WHERE mcq_id = ?", (mcq_id,))
+    user_id = (user_id or 'default').strip()
+    cursor.execute("SELECT revision_status FROM mistakes_book WHERE mcq_id = ? AND user_id = ?", (mcq_id, user_id))
     row = cursor.fetchone()
     if row:
         new_status = 'Mastered' if row['revision_status'] == 'Reviewed' else 'Reviewed'
-        cursor.execute("UPDATE mistakes_book SET revision_status = ?, last_attempted_at = CURRENT_TIMESTAMP WHERE mcq_id = ?", (new_status, mcq_id))
+        cursor.execute("UPDATE mistakes_book SET revision_status = ?, last_attempted_at = CURRENT_TIMESTAMP WHERE mcq_id = ? AND user_id = ?", (new_status, mcq_id, user_id))
         conn.commit()
     conn.close()
 
-def get_mistakes_book(set_name=None, status=None):
+def get_mistakes_book(set_name=None, status=None, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     query = """
         SELECT mb.*, m.question, m.option_a, m.option_b, m.option_c, m.option_d,
                m.correct_option, m.explanation, m.section_ref, m.exam_tip, m.topic,
@@ -743,9 +831,9 @@ def get_mistakes_book(set_name=None, status=None):
         FROM mistakes_book mb
         JOIN mcqs m ON mb.mcq_id = m.id
         LEFT JOIN chapters c ON mb.chapter_code = c.code AND mb.set_name = c.set_name
-        WHERE 1=1
+        WHERE mb.user_id = ?
     """
-    params = []
+    params = [user_id]
     if set_name and set_name != 'all':
         query += " AND mb.set_name = ?"
         params.append(set_name.upper())
@@ -759,13 +847,14 @@ def get_mistakes_book(set_name=None, status=None):
     conn.close()
     return rows
 
-def update_mistake_status(mistake_id, status, notes=None):
+def update_mistake_status(mistake_id, status, notes=None, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     if notes is not None:
-        cursor.execute("UPDATE mistakes_book SET revision_status = ?, notes = ? WHERE id = ?", (status, notes, mistake_id))
+        cursor.execute("UPDATE mistakes_book SET revision_status = ?, notes = ? WHERE id = ? AND user_id = ?", (status, notes, mistake_id, user_id))
     else:
-        cursor.execute("UPDATE mistakes_book SET revision_status = ? WHERE id = ?", (status, mistake_id))
+        cursor.execute("UPDATE mistakes_book SET revision_status = ? WHERE id = ? AND user_id = ?", (status, mistake_id, user_id))
     conn.commit()
     conn.close()
 
@@ -858,9 +947,10 @@ def add_research_record(data):
 # ATTEMPTS & ANALYTICS
 # =========================================================================
 
-def save_attempt(data):
+def save_attempt(data, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     
     total_q = int(data.get('total_questions', 0))
     attempted = int(data.get('attempted', 0))
@@ -873,11 +963,12 @@ def save_attempt(data):
     
     cursor.execute("""
         INSERT INTO attempts (
-            set_name, mode, chapter_code, total_questions, attempted,
+            user_id, set_name, mode, chapter_code, total_questions, attempted,
             correct, incorrect, score, max_marks, percentage, passed,
             time_taken_seconds, breakdown_json, responses_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
+        user_id,
         data.get('set_name', 'A').upper(),
         data.get('mode', 'full_mock_50'),
         data.get('chapter_code', None),
@@ -897,17 +988,17 @@ def save_attempt(data):
     conn.commit()
     conn.close()
 
-    # Feed into My Mistakes Book for every incorrect answer
+    # Feed into My Mistakes Book and Question Progress for this user
     for resp in data.get('responses', []):
         q_id = resp.get('id')
         if not q_id:
             continue
         if resp.get('is_attempted') and not resp.get('is_correct'):
-            record_mistake(q_id, resp.get('selected_option'))
-            record_question_progress(q_id, False)
+            record_mistake(q_id, resp.get('selected_option'), user_id=user_id)
+            record_question_progress(q_id, False, user_id=user_id)
         elif resp.get('is_correct'):
-            record_correct_attempt(q_id)
-            record_question_progress(q_id, True)
+            record_correct_attempt(q_id, user_id=user_id)
+            record_question_progress(q_id, True, user_id=user_id)
 
     return {
         "id": attempt_id,
@@ -920,10 +1011,11 @@ def save_attempt(data):
         "incorrect": incorrect
     }
 
-def get_attempts(limit=25):
+def get_attempts(limit=25, user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM attempts ORDER BY attempted_at DESC LIMIT ?", (limit,))
+    user_id = (user_id or 'default').strip()
+    cursor.execute("SELECT * FROM attempts WHERE user_id = ? ORDER BY attempted_at DESC LIMIT ?", (user_id, limit))
     rows = []
     for r in cursor.fetchall():
         d = dict(r)
@@ -933,9 +1025,10 @@ def get_attempts(limit=25):
     conn.close()
     return rows
 
-def get_stats():
+def get_stats(user_id='default'):
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     
     cursor.execute("SELECT COUNT(*) FROM mcqs WHERE set_name = 'A'")
     count_a = cursor.fetchone()[0]
@@ -949,26 +1042,40 @@ def get_stats():
     cursor.execute("SELECT COUNT(*) FROM mcqs WHERE source_tag = 'ICAI BoS Module'")
     count_icai = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM bookmarks")
+    cursor.execute("SELECT COUNT(*) FROM bookmarks WHERE user_id = ?", (user_id,))
     count_bookmarks = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM mistakes_book WHERE revision_status != 'Mastered'")
+    cursor.execute("SELECT COUNT(*) FROM mistakes_book WHERE revision_status != 'Mastered' AND user_id = ?", (user_id,))
     count_active_mistakes = cursor.fetchone()[0]
 
     cursor.execute("SELECT COUNT(*) FROM topics WHERE priority_level IN ('Very High Priority', 'High Priority')")
     count_high_priority_topics = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM attempts")
+    cursor.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ?", (user_id,))
     total_attempts = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM attempts WHERE passed = 1")
+    cursor.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ? AND passed = 1", (user_id,))
     passed_attempts = cursor.fetchone()[0]
     
-    cursor.execute("SELECT AVG(percentage) FROM attempts")
+    cursor.execute("SELECT AVG(percentage) FROM attempts WHERE user_id = ?", (user_id,))
     avg_score_row = cursor.fetchone()[0]
     avg_score = round(avg_score_row, 1) if avg_score_row else 0.0
     
     conn.close()
+    return {
+        "count_set_a": count_a,
+        "count_set_b": count_b,
+        "total_mcqs": count_a + count_b,
+        "offline_recalls": count_recall,
+        "icai_official": count_icai,
+        "bookmarks_count": count_bookmarks,
+        "active_mistakes_count": count_active_mistakes,
+        "high_priority_topics": count_high_priority_topics,
+        "total_attempts": total_attempts,
+        "passed_attempts": passed_attempts,
+        "pass_rate": round((passed_attempts / total_attempts * 100), 1) if total_attempts > 0 else 0.0,
+        "avg_score": avg_score
+    }
     return {
         "count_set_a": count_a,
         "count_set_b": count_b,
@@ -1025,10 +1132,11 @@ def get_topic_stats(set_name='A'):
         "revision_percentage": round((revised / total_topics * 100), 1) if total_topics > 0 else 0.0
     }
 
-def record_question_progress(mcq_id, is_correct):
+def record_question_progress(mcq_id, is_correct, user_id='default'):
     """Update question attempt metrics upon practice drill or mock test attempt"""
     conn = get_db_connection()
     cursor = conn.cursor()
+    user_id = (user_id or 'default').strip()
     cursor.execute("SELECT set_name, chapter_code FROM mcqs WHERE id = ?", (mcq_id,))
     q_row = cursor.fetchone()
     if not q_row:
@@ -1042,25 +1150,25 @@ def record_question_progress(mcq_id, is_correct):
     cor_inc = 1 if is_correct else 0
 
     cursor.execute("""
-    INSERT INTO question_progress (mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
-    VALUES (?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(mcq_id) DO UPDATE SET
+    INSERT INTO question_progress (user_id, mcq_id, set_name, chapter_code, attempt_count, correct_count, incorrect_count, last_result, last_attempted_at)
+    VALUES (?, ?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id, mcq_id) DO UPDATE SET
         attempt_count = attempt_count + 1,
         correct_count = correct_count + ?,
         incorrect_count = incorrect_count + ?,
         last_result = excluded.last_result,
         last_attempted_at = CURRENT_TIMESTAMP
-    """, (mcq_id, set_name, chapter_code, cor_inc, inc_inc, last_res, cor_inc, inc_inc))
+    """, (user_id, mcq_id, set_name, chapter_code, cor_inc, inc_inc, last_res, cor_inc, inc_inc))
 
     conn.commit()
     conn.close()
 
-def get_bank_coverage(set_name='A'):
+def get_bank_coverage(set_name='A', user_id='default'):
     """
     Returns high-yield coverage metrics:
     - total_mcqs: Total size of question bank
-    - attempted: Attempted at least once
-    - never_attempted: Untouched / unseen questions
+    - attempted: Attempted at least once by user
+    - never_attempted: Untouched / unseen questions by user
     - wrong_many_times: Questions with repeated errors or last answered incorrectly
     - correct_many_times: Questions consistently answered correctly or mastered
     - coverage_pct: % of question bank covered
@@ -1069,32 +1177,33 @@ def get_bank_coverage(set_name='A'):
     conn = get_db_connection()
     cursor = conn.cursor()
     set_name = set_name.upper()
+    user_id = (user_id or 'default').strip()
 
     cursor.execute("SELECT COUNT(*) FROM mcqs WHERE set_name = ?", (set_name,))
     total_mcqs = cursor.fetchone()[0]
 
     cursor.execute("""
         SELECT COUNT(*) FROM mcqs m
-        JOIN question_progress qp ON m.id = qp.mcq_id
+        JOIN question_progress qp ON m.id = qp.mcq_id AND qp.user_id = ?
         WHERE m.set_name = ? AND qp.attempt_count > 0
-    """, (set_name,))
+    """, (user_id, set_name))
     attempted_count = cursor.fetchone()[0]
     never_attempted_count = max(0, total_mcqs - attempted_count)
 
     cursor.execute("""
         SELECT COUNT(*) FROM mcqs m
-        JOIN question_progress qp ON m.id = qp.mcq_id
+        JOIN question_progress qp ON m.id = qp.mcq_id AND qp.user_id = ?
         WHERE m.set_name = ? AND qp.attempt_count > 0 
           AND (qp.incorrect_count >= 1 AND (qp.last_result = 'incorrect' OR qp.incorrect_count > qp.correct_count))
-    """, (set_name,))
+    """, (user_id, set_name))
     wrong_many_times_count = cursor.fetchone()[0]
 
     cursor.execute("""
         SELECT COUNT(*) FROM mcqs m
-        JOIN question_progress qp ON m.id = qp.mcq_id
+        JOIN question_progress qp ON m.id = qp.mcq_id AND qp.user_id = ?
         WHERE m.set_name = ? AND qp.attempt_count > 0
           AND (qp.correct_count >= 1 AND (qp.last_result = 'correct' OR qp.correct_count >= qp.incorrect_count))
-    """, (set_name,))
+    """, (user_id, set_name))
     correct_many_times_count = cursor.fetchone()[0]
 
     cursor.execute("""
@@ -1109,11 +1218,11 @@ def get_bank_coverage(set_name='A'):
             COUNT(CASE WHEN qp.attempt_count > 0 AND (qp.correct_count >= 1 AND (qp.last_result = 'correct' OR qp.correct_count >= qp.incorrect_count)) THEN 1 END) as correct_many_times
         FROM chapters c
         LEFT JOIN mcqs m ON c.code = m.chapter_code AND c.set_name = m.set_name
-        LEFT JOIN question_progress qp ON m.id = qp.mcq_id
+        LEFT JOIN question_progress qp ON m.id = qp.mcq_id AND qp.user_id = ?
         WHERE c.set_name = ?
         GROUP BY c.id
         ORDER BY c.order_seq ASC
-    """, (set_name,))
+    """, (user_id, set_name))
     chapters_breakdown = [dict(r) for r in cursor.fetchall()]
 
     coverage_pct = round((attempted_count / total_mcqs * 100), 1) if total_mcqs > 0 else 0.0
@@ -1121,6 +1230,7 @@ def get_bank_coverage(set_name='A'):
     conn.close()
     return {
         "set_name": set_name,
+        "user_id": user_id,
         "total_mcqs": total_mcqs,
         "attempted": attempted_count,
         "never_attempted": never_attempted_count,
@@ -1130,10 +1240,10 @@ def get_bank_coverage(set_name='A'):
         "chapters": chapters_breakdown
     }
 
-def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, limit=None, random_order=True):
+def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, limit=None, random_order=True, user_id='default'):
     """
-    Fetch questions filtered by coverage cohort:
-    - never_attempted: Questions not yet attempted (attempt_count = 0 or NULL)
+    Fetch questions filtered by coverage cohort for specific user:
+    - never_attempted: Questions not yet attempted by user
     - wrong_many_times: Questions with repeated errors or last answered incorrectly
     - correct_many_times: Questions answered correctly / mastered
     - attempted: All attempted questions
@@ -1141,6 +1251,7 @@ def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, 
     conn = get_db_connection()
     cursor = conn.cursor()
     set_name = set_name.upper()
+    user_id = (user_id or 'default').strip()
 
     query = """
         SELECT m.*,
@@ -1152,12 +1263,12 @@ def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, 
                CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
                mb.revision_status as mistake_status
         FROM mcqs m
-        LEFT JOIN question_progress qp ON m.id = qp.mcq_id
-        LEFT JOIN bookmarks b ON m.id = b.mcq_id
-        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+        LEFT JOIN question_progress qp ON m.id = qp.mcq_id AND qp.user_id = ?
+        LEFT JOIN bookmarks b ON m.id = b.mcq_id AND b.user_id = ?
+        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id AND mb.user_id = ?
         WHERE m.set_name = ?
     """
-    params = [set_name]
+    params = [user_id, user_id, user_id, set_name]
 
     if cohort == 'never_attempted':
         query += " AND (qp.attempt_count IS NULL OR qp.attempt_count = 0)"
@@ -1197,9 +1308,9 @@ def get_cohort_mcqs(set_name='A', cohort='never_attempted', chapter_codes=None, 
     conn.close()
     return rows
 
-def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=10, cohort=None):
+def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=10, cohort=None, user_id='default'):
     """
-    Supports 10 Exam Practice Modes + Cohort Coverage Modes:
+    Supports 10 Exam Practice Modes + Cohort Coverage Modes for specific user:
     - cohort in ('never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted')
     1. important: Questions from top high-priority topics
     2. icai: Official ICAI BoS Module, TYK, and Case Booklet
@@ -1212,9 +1323,10 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
     9. case_scenarios: Case study questions
     10. adaptive: Blended review based on difficulty & mistake history
     """
+    user_id = (user_id or 'default').strip()
     active_cohort = cohort or (mode if mode in ('never_attempted', 'wrong_many_times', 'correct_many_times', 'attempted') else None)
     if active_cohort:
-        return get_cohort_mcqs(set_name=set_name, cohort=active_cohort, chapter_codes=chapter_code, limit=count, random_order=True)
+        return get_cohort_mcqs(set_name=set_name, cohort=active_cohort, chapter_codes=chapter_code, limit=count, random_order=True, user_id=user_id)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1227,11 +1339,11 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
                CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
                mb.revision_status as mistake_status
         FROM mcqs m
-        LEFT JOIN bookmarks b ON m.id = b.mcq_id
-        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+        LEFT JOIN bookmarks b ON m.id = b.mcq_id AND b.user_id = ?
+        LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id AND mb.user_id = ?
         WHERE m.set_name = ?
     """
-    params = [set_name]
+    params = [user_id, user_id, set_name]
 
     if mode == 'important':
         # Match questions tagged with high priority topics or hard difficulty
@@ -1278,8 +1390,8 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
             base_query += " ORDER BY RANDOM()"
 
     elif mode == 'weak_area':
-        # Join with mistakes book
-        cursor.execute("SELECT DISTINCT chapter_code FROM mistakes_book WHERE set_name = ? AND revision_status != 'Mastered'", (set_name,))
+        # Join with mistakes book for this user
+        cursor.execute("SELECT DISTINCT chapter_code FROM mistakes_book WHERE set_name = ? AND revision_status != 'Mastered' AND user_id = ?", (set_name, user_id))
         weak_chaps = [r[0] for r in cursor.fetchall()]
         if weak_chaps:
             placeholders = ','.join(['?'] * len(weak_chaps))
@@ -1294,7 +1406,7 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
         params.append(count)
 
     elif mode == 'adaptive':
-        # Mix of mistakes book questions + unattempted
+        # Mix of mistakes book questions + unattempted for this user
         base_query += " ORDER BY mistake_count DESC, RANDOM() LIMIT ?"
         params.append(count)
 
@@ -1313,14 +1425,30 @@ def get_practice_questions(set_name='A', mode='mixed', chapter_code=None, count=
                    CASE WHEN mb.id IS NOT NULL THEN mb.incorrect_count ELSE 0 END as mistake_count,
                    mb.revision_status as mistake_status
             FROM mcqs m
-            LEFT JOIN bookmarks b ON m.id = b.mcq_id
-            LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id
+            LEFT JOIN bookmarks b ON m.id = b.mcq_id AND b.user_id = ?
+            LEFT JOIN mistakes_book mb ON m.id = mb.mcq_id AND mb.user_id = ?
             WHERE m.set_name = ?
             ORDER BY RANDOM() LIMIT ?
         """
-        cursor.execute(fallback_query, (set_name, count))
+        cursor.execute(fallback_query, (user_id, user_id, set_name, count))
         rows = [dict(r) for r in cursor.fetchall()]
 
     conn.close()
     return rows
+
+def reset_user_progress(user_id, allow_default=False):
+    """Safely reset individual user's mock attempts, bookmarks, and mistakes without affecting other users"""
+    if not user_id:
+        return False
+    if user_id == 'default' and not allow_default:
+        return False
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM attempts WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM mistakes_book WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM question_progress WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM bookmarks WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return True
 

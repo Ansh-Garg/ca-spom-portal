@@ -26,7 +26,53 @@ PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 
 class SPOMRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        self._current_user_id = 'default'
         super().__init__(*args, directory=PUBLIC_DIR, **kwargs)
+
+    def get_user_id(self):
+        """Extract user_id from X-User-ID header or spom_uid cookie with safe validation"""
+        # 1. Custom HTTP header: X-User-ID (highest priority, set by frontend apiFetch)
+        uid_header = self.headers.get('X-User-ID', '').strip()
+        if uid_header:
+            cleaned = ''.join(c for c in uid_header if c.isalnum() or c in '-_')[:64]
+            if cleaned:
+                return cleaned
+
+        # 2. HTTP Cookie: spom_uid
+        cookie_header = self.headers.get('Cookie', '')
+        if cookie_header:
+            cookies = [c.strip() for c in cookie_header.split(';')]
+            for c in cookies:
+                if c.startswith('spom_uid='):
+                    uid_cookie = c.split('=', 1)[1].strip()
+                    cleaned = ''.join(ch for ch in uid_cookie if ch.isalnum() or ch in '-_')[:64]
+                    if cleaned:
+                        return cleaned
+
+        return 'default'
+
+    def send_health_response(self):
+        """Dedicated, zero-overhead health check response for Render and uptime monitoring (HTTP 200, plain text: OK)"""
+        body = b"OK"
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_HEAD(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        if parsed_url.path in ["/health", "/healthz"]:
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Content-Length', '2')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            return
+        return super().do_HEAD()
 
     def end_headers(self):
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -34,14 +80,18 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         self.send_header('Expires', '0')
         super().end_headers()
 
-    def send_json(self, data, status_code=200):
+    def send_json(self, data, status_code=200, user_id=None):
+        if user_id is None:
+            user_id = getattr(self, '_current_user_id', 'default')
         response_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode('utf-8')
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(response_bytes)))
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-User-ID')
+        if user_id and user_id != 'default':
+            self.send_header('Set-Cookie', f'spom_uid={user_id}; Path=/; Max-Age=315360000; SameSite=Lax')
         self.end_headers()
         self.wfile.write(response_bytes)
 
@@ -49,7 +99,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-User-ID')
         self.end_headers()
 
     def do_GET(self):
@@ -57,10 +107,24 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
 
+        # 0. Dedicated Lightweight Health Check for Render & Uptime Pingers
+        if path in ["/health", "/healthz"]:
+            self.send_health_response()
+            return
+
+        user_id = self.get_user_id()
+        self._current_user_id = user_id
+
+        # 0b. Current User Identity & Summary
+        if path == "/api/user/me":
+            stats = database.get_stats(user_id=user_id)
+            self.send_json({"success": True, "user_id": user_id, "data": stats})
+            return
+
         # 1. Platform Statistics
-        if path == "/api/stats":
-            stats = database.get_stats()
-            self.send_json({"success": True, "data": stats})
+        elif path == "/api/stats":
+            stats = database.get_stats(user_id=user_id)
+            self.send_json({"success": True, "data": stats, "user_id": user_id})
             return
 
         # 2. Chapters Metadata
@@ -85,22 +149,23 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 source_tag=source_tag,
                 section_group=section_group,
                 limit=limit, 
-                random_order=random_order
+                random_order=random_order,
+                user_id=user_id
             )
             self.send_json({"success": True, "count": len(mcqs), "data": mcqs})
             return
 
         # 4. Bookmarked MCQs
         elif path == "/api/bookmarks":
-            bookmarks = database.get_bookmarked_mcqs()
-            self.send_json({"success": True, "count": len(bookmarks), "data": bookmarks})
+            bookmarks = database.get_bookmarked_mcqs(user_id=user_id)
+            self.send_json({"success": True, "count": len(bookmarks), "data": bookmarks, "user_id": user_id})
             return
 
         # 4b. Question Bank Coverage & Cohort Metrics
         elif path == "/api/question-bank-coverage":
             set_name = query.get('set', ['A'])[0].upper()
-            cov = database.get_bank_coverage(set_name)
-            self.send_json({"success": True, "data": cov})
+            cov = database.get_bank_coverage(set_name, user_id=user_id)
+            self.send_json({"success": True, "data": cov, "user_id": user_id})
             return
 
         # 5. Authentic 100 Marks Mock Generation (Section Weightage + Shuffling)
@@ -113,7 +178,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
 
             if cohort_arg:
                 # Cohort specific mock test (Never Attempted, Wrong Many Times, Correct Many Times, Attempted)
-                pool = database.get_cohort_mcqs(set_name=set_name, cohort=cohort_arg, chapter_codes=chapters_arg, random_order=True)
+                pool = database.get_cohort_mcqs(set_name=set_name, cohort=cohort_arg, chapter_codes=chapters_arg, random_order=True, user_id=user_id)
                 if not pool:
                     self.send_json({"success": False, "error": f"No questions found in cohort '{cohort_arg}' for Set {set_name}"}, status_code=404)
                     return
@@ -140,7 +205,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
 
             elif chapters_arg:
                 # Custom single chapter or combination of chapters test
-                pool = database.get_mcqs(set_name=set_name, chapter_code=chapters_arg, random_order=True)
+                pool = database.get_mcqs(set_name=set_name, chapter_code=chapters_arg, random_order=True, user_id=user_id)
                 if not pool:
                     self.send_json({"success": False, "error": f"No questions found for selected chapters in Set {set_name}"}, status_code=404)
                     return
@@ -183,8 +248,8 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                         target_p1 = 25 # 25 x 2 = 50 Marks
                         target_p2 = 25 # 25 x 2 = 50 Marks
 
-                all_p1 = database.get_mcqs(set_name=set_name, section_group=part1_group, random_order=True)
-                all_p2 = database.get_mcqs(set_name=set_name, section_group=part2_group, random_order=True)
+                all_p1 = database.get_mcqs(set_name=set_name, section_group=part1_group, random_order=True, user_id=user_id)
+                all_p2 = database.get_mcqs(set_name=set_name, section_group=part2_group, random_order=True, user_id=user_id)
 
                 if not all_p1 and not all_p2:
                     self.send_json({"success": False, "error": f"No questions found for Set {set_name}"}, status_code=404)
@@ -288,8 +353,8 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
 
         # 6. Test Attempts History
         elif path == "/api/attempts":
-            attempts = database.get_attempts()
-            self.send_json({"success": True, "data": attempts})
+            attempts = database.get_attempts(limit=50, user_id=user_id)
+            self.send_json({"success": True, "data": attempts, "user_id": user_id})
             return
 
         # 7. Sample CSV / JSON Templates
@@ -432,7 +497,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         elif path == "/api/intelligence/dashboard":
             set_name = query.get('set', ['A'])[0].upper()
             stats = database.get_topic_stats(set_name)
-            study_today = database.get_study_today_recommendations(set_name, limit=5)
+            study_today = database.get_study_today_recommendations(set_name, limit=5, user_id=user_id)
             syllabus = database.get_syllabus_versions(set_name)
             self.send_json({
                 "success": True,
@@ -466,8 +531,8 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         elif path == "/api/mistakes":
             set_name = query.get('set', [None])[0]
             status = query.get('status', [None])[0]
-            mistakes = database.get_mistakes_book(set_name, status)
-            self.send_json({"success": True, "count": len(mistakes), "data": mistakes})
+            mistakes = database.get_mistakes_book(set_name, status, user_id=user_id)
+            self.send_json({"success": True, "count": len(mistakes), "data": mistakes, "user_id": user_id})
             return
 
         # 13. Intelligent Practice Engine (10 Modes + Immediate Feedback)
@@ -479,7 +544,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
             cohort = query.get('cohort', [None])[0]
             shuffle_options = query.get('shuffle_options', ['true'])[0].lower() == 'true'
 
-            questions = database.get_practice_questions(set_name, mode, chapter_code, count, cohort=cohort)
+            questions = database.get_practice_questions(set_name, mode, chapter_code, count, cohort=cohort, user_id=user_id)
             final_qs = []
             for idx, q in enumerate(questions):
                 opts = [
@@ -572,19 +637,21 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
+        user_id = self.get_user_id()
+        self._current_user_id = user_id
 
         content_length = int(self.headers.get('Content-Length', 0))
         body_bytes = self.rfile.read(content_length)
         content_type = self.headers.get('Content-Type', '')
 
         # 1. Bookmark Toggle Endpoint
-        if path == "/api/bookmark/toggle":
+        if path in ["/api/bookmark/toggle", "/api/bookmark"]:
             try:
                 data = json.loads(body_bytes.decode('utf-8'))
                 mcq_id = int(data.get('mcq_id'))
                 notes = data.get('notes', '')
-                is_bm = database.toggle_bookmark(mcq_id, notes)
-                self.send_json({"success": True, "is_bookmarked": is_bm, "mcq_id": mcq_id})
+                is_bm = database.toggle_bookmark(mcq_id, notes, user_id=user_id)
+                self.send_json({"success": True, "is_bookmarked": is_bm, "mcq_id": mcq_id, "user_id": user_id})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)}, status_code=400)
             return
@@ -623,7 +690,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 total_questions = len(submitted_questions)
                 for idx, q_item in enumerate(submitted_questions):
                     q_id = q_item.get('id')
-                    mcq_db = database.get_mcq_by_id(q_id) if q_id else None
+                    mcq_db = database.get_mcq_by_id(q_id, user_id=user_id) if q_id else None
 
                     marks = float(q_item.get('marks') or (mcq_db.get('marks', 2) if mcq_db else 2))
                     max_marks += marks
@@ -827,7 +894,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 ]
             }
 
-            saved_attempt = database.save_attempt(result_record)
+            saved_attempt = database.save_attempt(result_record, user_id=user_id)
 
             self.send_json({
                 "success": True,
@@ -864,19 +931,19 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 is_correct = bool(data.get('is_correct'))
                 selected_text = data.get('selected_text', '')
 
-                mcq = database.get_mcq_by_id(q_id)
+                mcq = database.get_mcq_by_id(q_id, user_id=user_id)
                 if mcq:
                     if is_correct:
-                        database.record_correct_attempt(q_id)
+                        database.record_correct_attempt(q_id, user_id=user_id)
                     else:
                         orig_sel_key = 'A'
                         for db_k in ['A', 'B', 'C', 'D']:
                             if mcq.get(f'option_{db_k.lower()}') == selected_text:
                                 orig_sel_key = db_k
                                 break
-                        database.record_mistake(q_id, orig_sel_key)
-                    database.record_question_progress(q_id, is_correct)
-                self.send_json({"success": True})
+                        database.record_mistake(q_id, orig_sel_key, user_id=user_id)
+                    database.record_question_progress(q_id, is_correct, user_id=user_id)
+                self.send_json({"success": True, "user_id": user_id})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)}, status_code=400)
             return
@@ -919,7 +986,7 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
             return
 
         # 5. Bulk Upload (CSV / JSON)
-        elif path == "/api/mcqs/bulk-upload":
+        elif path in ["/api/mcqs/bulk-upload", "/api/upload"]:
             content_str = body_bytes.decode('utf-8', errors='ignore')
             items_to_insert = []
             
@@ -1016,8 +1083,8 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 mistake_id = int(data.get('mistake_id'))
                 status = data.get('status', 'Reviewed')
                 notes = data.get('notes', None)
-                database.update_mistake_status(mistake_id, status, notes)
-                self.send_json({"success": True, "mistake_id": mistake_id, "status": status})
+                database.update_mistake_status(mistake_id, status, notes, user_id=user_id)
+                self.send_json({"success": True, "mistake_id": mistake_id, "status": status, "user_id": user_id})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)}, status_code=400)
             return
@@ -1030,6 +1097,43 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
                 self.send_json({"success": True, "id": new_id, "message": "Research record ingested successfully."})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)}, status_code=400)
+            return
+
+        # 9. Reset User Progress
+        elif path == "/api/user/reset":
+            try:
+                res = database.reset_user_progress(user_id=user_id, allow_default=True)
+                self.send_json({"success": True, "user_id": user_id, "message": "User workspace progress reset successfully."})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)}, status_code=500)
+            return
+
+        self.send_json({"success": False, "error": f"Endpoint not found: {path}"}, status_code=404)
+
+    def do_DELETE(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        query = urllib.parse.parse_qs(parsed_url.query)
+
+        if path in ["/api/mcq", "/api/mcq/delete"]:
+            mcq_id = query.get('id', [None])[0]
+            if not mcq_id:
+                content_length = int(self.headers.get('Content-Length', 0))
+                if content_length > 0:
+                    try:
+                        body_data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+                        mcq_id = body_data.get('id')
+                    except Exception:
+                        pass
+            if mcq_id:
+                deleted = database.delete_mcq(int(mcq_id))
+                if deleted:
+                    self.send_json({"success": True, "message": f"MCQ #{mcq_id} deleted successfully"})
+                    return
+                else:
+                    self.send_json({"success": False, "error": "MCQ not found"}, status_code=404)
+                    return
+            self.send_json({"success": False, "error": "MCQ id is required"}, status_code=400)
             return
 
         self.send_json({"success": False, "error": f"Endpoint not found: {path}"}, status_code=404)

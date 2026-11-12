@@ -40,6 +40,10 @@
       </ul>
 
       <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+        <button class="user-workspace-pill" id="workspace-pill" onclick="app.openWorkspaceModal()" title="Private Workspace & Cloud Sync Status">
+          <span class="user-status-dot"></span>
+          <span class="user-id-text" id="user-id-display">Workspace</span>
+        </button>
         <button class="btn-icon" id="theme-toggle" title="Toggle Theme" onclick="app.toggleTheme()">
           <span id="theme-icon">☀️</span>
         </button>
@@ -1264,6 +1268,60 @@
         <button class="btn btn-primary" onclick="app.closePracticeCompleteModal(); app.exitPracticeSession();">
           Return to Testing Centre
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace & Local Cache Sync Modal -->
+  <div class="modal-overlay" id="workspace-modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">👤</span>
+          <h3 class="modal-title" style="margin: 0; font-size: 1.15rem;">Personal Workspace & Cloud Sync</h3>
+        </div>
+        <button class="btn-icon" onclick="app.closeWorkspaceModal()" title="Close" style="font-size: 1.25rem; line-height: 1;">&times;</button>
+      </div>
+
+      <div class="modal-body" style="margin-bottom: 1rem;">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
+          You are using an <strong>isolated personal workspace</strong>. Your Question Bank coverage, mock attempts, bookmarks, and Mistakes Book are private to you and seamlessly synced between your browser and the Render cloud database.
+        </p>
+
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em; font-weight: 600;">Workspace Identifier</span>
+            <span class="badge primary" style="font-size: 0.7rem;">Private & Synced</span>
+          </div>
+          <div style="font-family: monospace; font-size: 0.85rem; color: var(--text-main); word-break: break-all; background: var(--bg-elevated); padding: 0.4rem 0.6rem; border-radius: 4px;" id="workspace-id-full">
+            spom_u_...
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.25rem;">Browser Cache</div>
+            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">Local-First (Fast Load)</div>
+          </div>
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.25rem;">Cloud Database</div>
+            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">Render SQLite (Isolated)</div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+          <h4 style="font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--text-main);">Reset Personal Workspace</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem; line-height: 1.45;">
+            Want a completely fresh start? This will reset all your mock attempts, Mistakes Book records, and question coverage without affecting other students.
+          </p>
+          <button class="btn btn-secondary" style="border-color: rgba(220, 53, 69, 0.4); color: #dc3545; width: 100%; font-size: 0.85rem; justify-content: center;" onclick="app.resetUserWorkspace()">
+            🗑️ Reset My Workspace Progress
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="app.closeWorkspaceModal()">Done</button>
       </div>
     </div>
   </div>

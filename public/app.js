@@ -77,12 +77,151 @@ const app = {
   lastResult: null,
 
   // =========================================================================
+  // Multi-Tenant Personal Workspace & Local Caching Engine
+  // =========================================================================
+
+  getUserId() {
+    let uid = null;
+    try {
+      uid = localStorage.getItem('spom_uid');
+    } catch (e) {}
+
+    if (!uid) {
+      const match = document.cookie.match(/(?:^|;\s*)spom_uid\s*=\s*([^;]+)/);
+      if (match && match[1]) {
+        uid = match[1].trim();
+      }
+    }
+
+    if (!uid) {
+      const rand = Math.random().toString(36).substring(2, 9);
+      const ts = Date.now().toString(36);
+      uid = `spom_u_${rand}${ts}`;
+    }
+
+    try {
+      localStorage.setItem('spom_uid', uid);
+    } catch (e) {}
+
+    try {
+      document.cookie = `spom_uid=${uid}; Path=/; Max-Age=315360000; SameSite=Lax`;
+    } catch (e) {}
+
+    return uid;
+  },
+
+  getCache(key) {
+    try {
+      const fullKey = `spom_cache_${this.getUserId()}_${key}`;
+      const raw = localStorage.getItem(fullKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed.data;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  setCache(key, data) {
+    try {
+      const fullKey = `spom_cache_${this.getUserId()}_${key}`;
+      const item = {
+        timestamp: Date.now(),
+        data: data
+      };
+      localStorage.setItem(fullKey, JSON.stringify(item));
+    } catch (e) {}
+  },
+
+  clearUserCache() {
+    try {
+      const prefix = `spom_cache_${this.getUserId()}_`;
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(prefix)) {
+          toRemove.push(k);
+        }
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+  },
+
+  async apiFetch(url, options = {}) {
+    const uid = this.getUserId();
+    const headers = Object.assign({}, options.headers || {});
+    headers['X-User-ID'] = uid;
+
+    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+      options.body = JSON.stringify(options.body);
+    }
+
+    return await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'same-origin'
+    });
+  },
+
+  updateWorkspaceUI() {
+    const uid = this.getUserId();
+    const dispEl = document.getElementById('user-id-display');
+    const fullEl = document.getElementById('workspace-id-full');
+    if (dispEl) dispEl.textContent = 'Workspace';
+    if (fullEl) fullEl.textContent = uid;
+  },
+
+  openWorkspaceModal() {
+    const modal = document.getElementById('workspace-modal');
+    if (modal) {
+      this.updateWorkspaceUI();
+      modal.classList.add('active');
+    }
+  },
+
+  closeWorkspaceModal() {
+    const modal = document.getElementById('workspace-modal');
+    if (modal) {
+      modal.classList.remove('active');
+    }
+  },
+
+  async resetUserWorkspace() {
+    const confirmed = confirm(
+      "Reset Workspace Progress?\n\nThis will clear your 100 Marks mock exam attempts, Mistakes Book records, and Question Bank coverage history.\n\nOther students' progress will NOT be affected. Are you sure you want to proceed?"
+    );
+    if (!confirmed) return;
+
+    try {
+      this.showToast("Resetting your personal workspace...", 'info');
+      const res = await this.apiFetch('/api/user/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        this.clearUserCache();
+        await this.fetchQuestionBankCoverage();
+        await this.fetchStats();
+        await this.fetchBookmarks();
+        await this.fetchMistakes();
+        this.closeWorkspaceModal();
+        this.showToast("Your workspace progress has been cleanly reset.", 'success');
+      } else {
+        this.showToast(data.error || "Failed to reset workspace", 'error');
+      }
+    } catch (err) {
+      console.error("Error resetting workspace:", err);
+      this.showToast("Network error resetting workspace", 'error');
+    }
+  },
+
+  // =========================================================================
   // Lifecycle & Initialization
   // =========================================================================
 
   async init() {
     this.initTheme();
     this.initKeyboardShortcuts();
+    this.updateWorkspaceUI();
     await this.switchSet('A', false);
     await this.renderChapterSelectionGrid();
     await this.fetchQuestionBankCoverage();
@@ -255,34 +394,47 @@ const app = {
   // =========================================================================
 
   async fetchStats() {
+    const cached = this.getCache('stats');
+    if (cached) {
+      this.renderStatsData(cached);
+    }
     try {
-      const res = await fetch('/api/stats');
+      const res = await this.apiFetch('/api/stats');
       const data = await res.json();
-      if (data.success) {
-        const s = data.data;
-        const totalQEl = document.getElementById('stat-total-q');
-        const passRateEl = document.getElementById('stat-pass-rate');
-        const mistakesNav = document.getElementById('nav-mistakes-count');
-        const recallsEl = document.getElementById('stat-offline-recalls');
-        const highPriorityEl = document.getElementById('stat-high-priority-topics');
-
-        if (totalQEl) totalQEl.textContent = s.total_mcqs || 0;
-        if (passRateEl) passRateEl.textContent = `${s.pass_rate || 0}%`;
-        if (mistakesNav) mistakesNav.textContent = s.unmastered_mistakes || 0;
-        if (recallsEl) recallsEl.textContent = `${s.total_student_recalls || 148}+ Recalls`;
-        if (highPriorityEl) highPriorityEl.textContent = `${s.high_priority_topics_count || 18} Topics`;
+      if (data.success && data.data) {
+        this.renderStatsData(data.data);
+        this.setCache('stats', data.data);
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
     }
   },
 
+  renderStatsData(s) {
+    const totalQEl = document.getElementById('stat-total-q');
+    const passRateEl = document.getElementById('stat-pass-rate');
+    const mistakesNav = document.getElementById('nav-mistakes-count');
+    const recallsEl = document.getElementById('stat-offline-recalls');
+    const highPriorityEl = document.getElementById('stat-high-priority-topics');
+
+    if (totalQEl) totalQEl.textContent = s.total_mcqs || 0;
+    if (passRateEl) passRateEl.textContent = `${s.pass_rate || 0}%`;
+    if (mistakesNav) mistakesNav.textContent = s.unmastered_mistakes || 0;
+    if (recallsEl) recallsEl.textContent = `${s.total_student_recalls || 148}+ Recalls`;
+    if (highPriorityEl) highPriorityEl.textContent = `${s.high_priority_topics_count || 18} Topics`;
+  },
+
   async fetchChapters(setName) {
+    const cached = this.getCache(`chapters_${setName}`);
+    if (cached) {
+      this.chapters = cached;
+    }
     try {
-      const res = await fetch(`/api/chapters?set=${setName}`);
+      const res = await this.apiFetch(`/api/chapters?set=${setName}`);
       const data = await res.json();
       if (data.success) {
         this.chapters = data.data;
+        this.setCache(`chapters_${setName}`, data.data);
       }
     } catch (err) {
       console.error("Error fetching chapters:", err);
@@ -290,11 +442,16 @@ const app = {
   },
 
   async fetchBookmarks() {
+    const cached = this.getCache('bookmarks');
+    if (cached) {
+      this.bookmarkedList = cached;
+    }
     try {
-      const res = await fetch('/api/bookmarks');
+      const res = await this.apiFetch('/api/bookmarks');
       const data = await res.json();
       if (data.success) {
         this.bookmarkedList = data.data;
+        this.setCache('bookmarks', data.data);
       }
     } catch (err) {
       console.error("Error fetching bookmarks:", err);
@@ -307,7 +464,7 @@ const app = {
 
   async fetchIntelligenceDashboard() {
     try {
-      const res = await fetch(`/api/intelligence/dashboard?set=${this.currentSet}`);
+      const res = await this.apiFetch(`/api/intelligence/dashboard?set=${this.currentSet}`);
       const data = await res.json();
       if (data.success) {
         // Syllabus Metadata Banner
@@ -465,7 +622,7 @@ const app = {
     if (!container) return;
 
     try {
-      const res = await fetch(`/api/handbook?set=${this.currentSet}&chapter=${chapterCode}`);
+      const res = await this.apiFetch(`/api/handbook?set=${this.currentSet}&chapter=${chapterCode}`);
       const data = await res.json();
 
       if (!data.success || !data.data) {
@@ -592,7 +749,7 @@ const app = {
     if (!container) return;
 
     try {
-      const res = await fetch(`/api/intelligence/topics?set=${this.currentSet}`);
+      const res = await this.apiFetch(`/api/intelligence/topics?set=${this.currentSet}`);
       const data = await res.json();
 
       if (!data.success || data.data.length === 0) {
@@ -805,11 +962,17 @@ const app = {
   },
 
   async fetchQuestionBankCoverage() {
+    const cached = this.getCache(`coverage_${this.currentSet}`);
+    if (cached) {
+      this.coverageState.data = cached;
+      this.renderCoverageHub();
+    }
     try {
-      const res = await fetch(`/api/question-bank-coverage?set=${this.currentSet}`);
+      const res = await this.apiFetch(`/api/question-bank-coverage?set=${this.currentSet}`);
       const data = await res.json();
       if (data.success && data.data) {
         this.coverageState.data = data.data;
+        this.setCache(`coverage_${this.currentSet}`, data.data);
         this.renderCoverageHub();
       }
     } catch (err) {
@@ -1121,7 +1284,7 @@ const app = {
       if (chapterCode && chapterCode !== 'all') url += `&chapters=${encodeURIComponent(chapterCode)}`;
       if (cohort) url += `&cohort=${encodeURIComponent(cohort)}`;
 
-      const res = await fetch(url);
+      const res = await this.apiFetch(url);
       const data = await res.json();
 
       if (!data.success || !data.questions || data.questions.length === 0) {
@@ -1301,14 +1464,16 @@ const app = {
     const selectedText = optsMap[this.practiceState.selectedOption] || '';
 
     // Record attempt asynchronously into DB & Mistakes Book
-    fetch('/api/record-practice-attempt', {
+    this.apiFetch('/api/record-practice-attempt', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         mcq_id: q.id,
         is_correct: isCorrect,
         selected_text: selectedText
-      })
+      }
+    }).then(() => {
+      this.fetchQuestionBankCoverage();
+      this.fetchStats();
     }).catch(e => console.error("Error recording practice attempt:", e));
 
     // Highlight options in Review State
@@ -1559,7 +1724,7 @@ const app = {
         url += `&status=${encodeURIComponent(capStatus)}`;
       }
 
-      const res = await fetch(url);
+      const res = await this.apiFetch(url);
       const data = await res.json();
       if (data.success) {
         this.mistakesList = data.data;
@@ -1626,10 +1791,9 @@ const app = {
 
   async updateMistakeStatus(mistakeId, status) {
     try {
-      const res = await fetch('/api/mistakes/status', {
+      const res = await this.apiFetch('/api/mistakes/status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mistake_id: mistakeId, status })
+        body: { mistake_id: mistakeId, status }
       });
       const data = await res.json();
       if (data.success) {
@@ -1664,7 +1828,7 @@ const app = {
       if (chapters && chapters !== 'all') url += `&chapters=${encodeURIComponent(chapters)}&count=${count}`;
       if (cohort) url += `&cohort=${encodeURIComponent(cohort)}&count=${count}`;
 
-      const res = await fetch(url);
+      const res = await this.apiFetch(url);
       const data = await res.json();
 
       if (!data.success) {
@@ -2054,10 +2218,9 @@ const app = {
 
     try {
       this.showToast("Submitting and calculating score...", 'info');
-      const res = await fetch('/api/submit-test', {
+      const res = await this.apiFetch('/api/submit-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: payload
       });
       const data = await res.json();
 
@@ -2276,10 +2439,9 @@ const app = {
 
   async toggleBookmark(mcqId) {
     try {
-      const res = await fetch('/api/bookmark', {
+      const res = await this.apiFetch('/api/bookmark', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mcq_id: mcqId })
+        body: { mcq_id: mcqId }
       });
       const data = await res.json();
       if (data.success) {
@@ -2326,10 +2488,9 @@ const app = {
     }
 
     try {
-      const res = await fetch('/api/research/ingest', {
+      const res = await this.apiFetch('/api/research/ingest', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           set_name: this.currentSet,
           source_name,
           source_type,
@@ -2355,7 +2516,7 @@ const app = {
     if (!container) return;
 
     try {
-      const res = await fetch(`/api/research/logs?set=${this.currentSet}`);
+      const res = await this.apiFetch(`/api/research/logs?set=${this.currentSet}`);
       const data = await res.json();
       if (data.success && data.data.length > 0) {
         container.innerHTML = data.data.map(r => `
@@ -2392,10 +2553,9 @@ const app = {
     }
 
     try {
-      const res = await fetch('/api/mcq', {
+      const res = await this.apiFetch('/api/mcq', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           set_name: this.currentSet,
           chapter_code,
           topic,
@@ -2438,7 +2598,7 @@ const app = {
 
     try {
       this.showToast("Uploading and validating questions...", 'info');
-      const res = await fetch('/api/upload', {
+      const res = await this.apiFetch('/api/upload', {
         method: 'POST',
         body: formData
       });
@@ -2462,7 +2622,7 @@ const app = {
     if (!tableBody) return;
 
     try {
-      const res = await fetch(`/api/mcqs?set=${this.currentSet}&limit=50`);
+      const res = await this.apiFetch(`/api/mcqs?set=${this.currentSet}&limit=50`);
       const data = await res.json();
       if (data.success) {
         this.qbQuestions = data.data;
@@ -2511,7 +2671,7 @@ const app = {
   async deleteMCQ(id) {
     if (!confirm("Are you sure you want to delete this question?")) return;
     try {
-      const res = await fetch(`/api/mcq?id=${id}`, { method: 'DELETE' });
+      const res = await this.apiFetch(`/api/mcq?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         this.showToast("Question deleted", 'info');
