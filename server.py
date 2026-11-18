@@ -57,7 +57,6 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'text/plain; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(body)
@@ -68,7 +67,6 @@ class SPOMRequestHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.send_header('Content-Length', '2')
-            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.send_header('Connection', 'close')
             self.end_headers()
             return

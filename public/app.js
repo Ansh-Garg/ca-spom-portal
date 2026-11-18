@@ -2497,7 +2497,7 @@ const app = {
           author_or_channel,
           key_findings,
           questions_extracted
-        })
+        }
       });
       const data = await res.json();
       if (data.success) {
@@ -2568,7 +2568,7 @@ const app = {
           explanation,
           source_tag,
           section_group: this.currentSet === 'A' ? "Part I: Corporate Laws" : "Part I: Strategic Cost"
-        })
+        }
       });
       const data = await res.json();
       if (data.success) {
