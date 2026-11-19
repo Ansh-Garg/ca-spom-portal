@@ -357,12 +357,20 @@ const app = {
 
     this.activeTab = tabName;
 
-    // Update Top Navigation Buttons
+    // Update Top & Mobile Bottom Navigation Buttons
     const navItems = ['home', 'handbook', 'practice', 'mistakes', 'studio'];
     navItems.forEach(item => {
       const btn = document.getElementById(`nav-${item}`);
       if (btn) btn.classList.toggle('active', item === tabName);
+      const bBtn = document.getElementById(`bottom-nav-${item}`);
+      if (bBtn) bBtn.classList.toggle('active', item === tabName);
     });
+
+    // Toggle Mobile Bottom Navigation Bar (Hidden during active CBT mock exam)
+    const mobileNav = document.getElementById('mobile-bottom-nav');
+    if (mobileNav) {
+      mobileNav.style.display = tabName === 'mock' ? 'none' : 'flex';
+    }
 
     // Toggle Pane Displays
     const allPanes = document.querySelectorAll('.tab-pane');
@@ -414,12 +422,14 @@ const app = {
     const totalQEl = document.getElementById('stat-total-q');
     const passRateEl = document.getElementById('stat-pass-rate');
     const mistakesNav = document.getElementById('nav-mistakes-count');
+    const bottomMistakes = document.getElementById('bottom-mistakes-badge');
     const recallsEl = document.getElementById('stat-offline-recalls');
     const highPriorityEl = document.getElementById('stat-high-priority-topics');
 
     if (totalQEl) totalQEl.textContent = s.total_mcqs || 0;
     if (passRateEl) passRateEl.textContent = `${s.pass_rate || 0}%`;
     if (mistakesNav) mistakesNav.textContent = s.unmastered_mistakes || 0;
+    if (bottomMistakes) bottomMistakes.textContent = s.unmastered_mistakes || 0;
     if (recallsEl) recallsEl.textContent = `${s.total_student_recalls || 148}+ Recalls`;
     if (highPriorityEl) highPriorityEl.textContent = `${s.high_priority_topics_count || 18} Topics`;
   },
@@ -2084,7 +2094,33 @@ const app = {
       this.renderCurrentMockQuestion();
       this.renderQuestionPalette();
       this.updatePaletteSummary();
+      // On mobile screens, auto-dismiss palette sheet on question selection
+      if (window.innerWidth <= 960) {
+        this.toggleMobilePalette(true);
+      }
     }
+  },
+
+  toggleMobilePalette(forceClose = false) {
+    const sidebar = document.getElementById('exam-palette-sidebar') || document.querySelector('.exam-sidebar');
+    const backdrop = document.getElementById('palette-drawer-backdrop');
+    if (!sidebar) return;
+
+    if (forceClose || sidebar.classList.contains('mobile-open')) {
+      sidebar.classList.remove('mobile-open');
+      if (backdrop) backdrop.classList.remove('mobile-open');
+      document.body.classList.remove('drawer-open-lock');
+    } else {
+      sidebar.classList.add('mobile-open');
+      if (backdrop) backdrop.classList.add('mobile-open');
+      document.body.classList.add('drawer-open-lock');
+    }
+  },
+
+  toggleCaseScenario(elementId = 'exam-case-box') {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    box.classList.toggle('collapsed');
   },
 
   renderQuestionPalette() {
@@ -2150,6 +2186,12 @@ const app = {
           <strong>${counts['not-visited']}</strong>
         </div>
       `;
+    }
+
+    const mobileBadge = document.getElementById('mobile-palette-badge');
+    if (mobileBadge) {
+      const answeredTotal = counts.answered + counts['answered-marked'];
+      mobileBadge.textContent = `${answeredTotal}/${this.mockExam.questions.length}`;
     }
   },
 

@@ -2,35 +2,45 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CA Final SPOM · Testing & Revision Portal</title>
-  <meta name="description" content="Minimalist, intelligence-driven preparation portal for CA Final SPOM Set A (Corporate & Economic Laws) and Set B (SCPM). 100 Marks CBT Simulator, Quick Revision Handbook, and Mistakes Book.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>CA Final SPOM · CBT Simulator & Intelligence Portal</title>
+  <meta name="description" content="Next-generation, smartphone-compliant testing & revision portal for CA Final SPOM Set A (Corporate & Economic Laws) and Set B (SCPM). 100 Marks TCS iON CBT Simulator, Quick Revision Handbook, and Mistakes Book.">
+  <meta name="theme-color" content="#F7F5F0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.3">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=3.5">
 </head>
 <body>
 
-  <!-- Minimalist Top Navigation -->
+  <!-- Modern App Top Navigation -->
   <nav class="navbar">
     <div class="nav-wrapper">
       <div class="brand" onclick="app.showTab('home')">
-        <span class="brand-badge">ICAI CBT</span>
-        <span class="brand-title">CA Final · SPOM</span>
+        <div class="brand-emblem">
+          <span class="brand-badge-text">ICAI</span>
+          <span class="brand-dot"></span>
+        </div>
+        <div class="brand-text-group">
+          <span class="brand-title">CA Final <span class="brand-title-accent">SPOM</span></span>
+          <span class="brand-subline">CBT Simulator & Intelligence</span>
+        </div>
       </div>
 
       <!-- Set Switcher -->
-      <div class="set-switcher">
+      <div class="set-switcher" role="group" aria-label="Subject Module Selection">
         <button id="set-a-btn" class="set-pill active" onclick="app.switchSet('A')">
-          Set A · Law (70/30M)
+          <span class="set-pill-short">Set A</span>
+          <span class="set-pill-long">Law (70/30M)</span>
         </button>
         <button id="set-b-btn" class="set-pill" onclick="app.switchSet('B')">
-          Set B · SCPM (50/50M)
+          <span class="set-pill-short">Set B</span>
+          <span class="set-pill-long">SCPM (50/50M)</span>
         </button>
       </div>
 
-      <!-- Concise Nav Links (Only 5 essential items) -->
+      <!-- Desktop Nav Links -->
       <ul class="nav-links">
         <li><button class="nav-item-btn active" id="nav-home" onclick="app.showTab('home')">Dashboard</button></li>
         <li><button class="nav-item-btn" id="nav-handbook" onclick="app.showTab('handbook')">Handbook</button></li>
@@ -39,12 +49,12 @@
         <li><button class="nav-item-btn" id="nav-studio" onclick="app.showTab('studio')">Studio</button></li>
       </ul>
 
-      <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+      <div class="nav-right-actions">
         <button class="user-workspace-pill" id="workspace-pill" onclick="app.openWorkspaceModal()" title="Private Workspace & Cloud Sync Status">
           <span class="user-status-dot"></span>
           <span class="user-id-text" id="user-id-display">Workspace</span>
         </button>
-        <button class="btn-icon" id="theme-toggle" title="Toggle Theme" onclick="app.toggleTheme()">
+        <button class="btn-icon" id="theme-toggle" title="Toggle Theme" onclick="app.toggleTheme()" aria-label="Toggle Theme">
           <span id="theme-icon">☀️</span>
         </button>
       </div>
@@ -670,9 +680,16 @@
 
           <!-- Practice Case Scenario Banner -->
           <div id="practice-case-box" class="case-scenario-box" style="display: none; margin-top: 1.25rem; margin-bottom: 1.25rem;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-              <h5 style="margin: 0;">Case Scenario Context</h5>
-              <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+            <div class="case-scenario-header" onclick="app.toggleCaseScenario('practice-case-box')">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="case-badge-icon">📋</span>
+                <h5 style="margin: 0; font-size: 0.92rem;">Case Scenario Context</h5>
+                <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+              </div>
+              <button type="button" class="case-toggle-btn" aria-label="Toggle Case Scenario">
+                <span class="case-toggle-text">Tap to Toggle</span>
+                <span class="case-toggle-arrow">▾</span>
+              </button>
             </div>
             <p id="practice-case-text" style="font-size: 0.95rem; line-height: 1.65; color: var(--text-secondary); white-space: pre-line; margin: 0;"></p>
           </div>
@@ -721,14 +738,22 @@
         <div class="exam-main">
           <!-- Header with Timer -->
           <div class="exam-header">
-            <div>
+            <div class="exam-header-left">
               <span class="exam-subject-badge" id="exam-badge-set">SET A · CORPORATE & ECONOMIC LAWS</span>
               <div style="font-size: 0.82rem; color: var(--text-muted);" id="exam-mode-indicator">
                 100 Marks Official CBT Mock
               </div>
             </div>
-            <div class="exam-timer" id="exam-timer-display" title="Remaining Time">
-              <span id="timer-text">180:00</span>
+            <div class="exam-header-right">
+              <button type="button" class="mobile-palette-toggle-btn" id="btn-mobile-palette-toggle" onclick="app.toggleMobilePalette()" aria-label="Open Question Palette">
+                <span class="palette-btn-icon">▦</span>
+                <span class="palette-btn-text">Palette</span>
+                <span class="palette-count-pill" id="mobile-palette-badge">0/50</span>
+              </button>
+              <div class="exam-timer" id="exam-timer-display" title="Remaining Time">
+                <span class="timer-icon">⏱</span>
+                <span id="timer-text">180:00</span>
+              </div>
             </div>
           </div>
 
@@ -748,9 +773,16 @@
           <!-- Question Body -->
           <div class="exam-body">
             <div id="exam-case-box" class="case-scenario-box" style="display: none; margin-bottom: 1.25rem;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                <h5 style="margin: 0;">Case Scenario Context</h5>
-                <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+              <div class="case-scenario-header" onclick="app.toggleCaseScenario('exam-case-box')">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <span class="case-badge-icon">📋</span>
+                  <h5 style="margin: 0; font-size: 0.92rem;">Case Scenario Context</h5>
+                  <span class="badge primary" style="font-size: 0.68rem; text-transform: uppercase;">Comprehensive Scenario</span>
+                </div>
+                <button type="button" class="case-toggle-btn" aria-label="Toggle Case Scenario">
+                  <span class="case-toggle-text">Tap to Toggle</span>
+                  <span class="case-toggle-arrow">▾</span>
+                </button>
               </div>
               <p id="exam-case-text" style="font-size: 0.95rem; line-height: 1.65; color: var(--text-secondary); white-space: pre-line; margin: 0;"></p>
             </div>
@@ -783,13 +815,13 @@
           <div class="exam-footer">
             <div class="exam-footer-left">
               <button class="btn btn-secondary btn-sm" id="btn-prev-q" onclick="app.prevQuestion()">
-                ← Previous
+                ← Prev
               </button>
               <button class="btn btn-outline btn-sm" onclick="app.clearCurrentResponse()">
-                Clear Response
+                Clear
               </button>
               <button class="btn btn-secondary btn-sm" onclick="app.markForReviewAndNext()">
-                Mark Review & Next
+                Review & Next
               </button>
             </div>
             <div class="exam-footer-right">
@@ -800,11 +832,20 @@
           </div>
         </div>
 
-        <!-- Right Question Palette -->
-        <aside class="exam-sidebar">
+        <!-- Backdrop overlay for mobile drawer -->
+        <div class="palette-backdrop" id="palette-drawer-backdrop" onclick="app.toggleMobilePalette(true)"></div>
+
+        <!-- Right Question Palette (Sidebar on desktop, slide-up sheet on mobile) -->
+        <aside class="exam-sidebar" id="exam-palette-sidebar">
+          <div class="sidebar-mobile-handle" onclick="app.toggleMobilePalette(true)">
+            <span class="handle-bar"></span>
+          </div>
           <div class="sidebar-title">
-            <span>Question Palette</span>
-            <span class="badge" id="palette-count-summary">0/50</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>Question Palette</span>
+              <span class="badge" id="palette-count-summary">0/50</span>
+            </div>
+            <button type="button" class="sidebar-close-btn" onclick="app.toggleMobilePalette(true)" aria-label="Close Palette">&times;</button>
           </div>
 
           <div class="palette-legend">
@@ -1343,5 +1384,41 @@
 
   <!-- App Script -->
   <script src="app.js?v=2.4"></script>
+
+  <!-- Mobile Bottom App Bar -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile Navigation">
+    <button type="button" class="bottom-nav-item active" id="bottom-nav-home" onclick="app.showTab('home')">
+      <div class="bottom-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <span class="bottom-nav-label">Dashboard</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="bottom-nav-handbook" onclick="app.showTab('handbook')">
+      <div class="bottom-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <span class="bottom-nav-label">Handbook</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="bottom-nav-practice" onclick="app.showTab('practice')">
+      <div class="bottom-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      </div>
+      <span class="bottom-nav-label">Testing</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="bottom-nav-mistakes" onclick="app.showTab('mistakes')">
+      <div class="bottom-nav-icon" style="position: relative;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span class="bottom-nav-badge" id="bottom-mistakes-badge">0</span>
+      </div>
+      <span class="bottom-nav-label">Mistakes</span>
+    </button>
+    <button type="button" class="bottom-nav-item" id="bottom-nav-studio" onclick="app.showTab('studio')">
+      <div class="bottom-nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      </div>
+      <span class="bottom-nav-label">Studio</span>
+    </button>
+  </nav>
+
 </body>
 </html>
